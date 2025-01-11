@@ -19,8 +19,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Webring Manager",
-  description: "Webring Manager",
+  title: "Voting Web App",
+  description: "Voting Web App",
 };
 
 export default function RootLayout({
