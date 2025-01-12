@@ -1,9 +1,10 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { UnstyledButton } from '@mantine/core'
+import { Group, Image, Menu, Text, UnstyledButton } from '@mantine/core'
 import { useContext, useEffect, useState } from 'react'
 import { UserContext } from '@/app/UserProvider'
+import { IconLogout } from '@tabler/icons-react'
 
 const Title = () => (
   <Link href='/'>
@@ -46,15 +47,9 @@ const NavBar = () => {
 
   useEffect(() => {
     const navLinks: NavLink[] = [];
-    if (user && user.superuser) {
+    if (user) {
       navLinks.push(...[
-        { href: '/users', label: 'Users' },
-        { href: '/websites', label: 'Websites' },
-      ]);
-    } if (user) {
-      navLinks.push(...[
-        { href: '/my-websites', label: 'My Websites' },
-        { href: '/profile', label: user.name },
+        { href: '/admin', label: 'Admin' },
       ]);
     }
     setNavLinks(navLinks);
@@ -76,9 +71,25 @@ const NavBar = () => {
             />
           ))}
           {user &&
-            <UnstyledButton className={`hover:opacity-100 opacity-50`} onClick={logout}>
-              Logout
-            </UnstyledButton>
+            <Menu trigger='click-hover' openDelay={100} closeDelay={400}>
+              <Menu.Target>
+                <UnstyledButton>
+                  <Group>
+                    <Image mah={24} maw={24} src={user.picture}></Image>
+                    <Text>{user.name}</Text>
+                  </Group>
+                </UnstyledButton>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                <Menu.Item disabled>
+                  {user.sub}
+                </Menu.Item>
+                <Menu.Item leftSection={<IconLogout></IconLogout>} onClick={logout}>
+                  Logout
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
           }
         </div>
       </div>

@@ -1,11 +1,16 @@
-from fastapi import FastAPI, HTTPException
+from datetime import datetime, timedelta, timezone
+from typing import Annotated
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from urllib import parse
 import secrets
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import requests
 from pydantic import BaseModel
 import jwt
 from .config import settings
+
+bearer_scheme = HTTPBearer()
 
 app = FastAPI()
 
@@ -41,6 +46,21 @@ def google_auth():
 class GoogleAuthCallback(BaseModel):
     code: str
 
+class TokenData(BaseModel):
+    sub: str
+    name: str
+    picture: str
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
+    to_encode.update({'exp': expire})
+    encoded_jwt = jwt.encode(to_encode, settings.access_token_secret, algorithm='HS256')
+    return encoded_jwt
+
 @app.post("/api/auth/google")
 def google_auth_callback(data: GoogleAuthCallback):
     # https://developers.google.com/identity/openid-connect/openid-connect#exchangecode
@@ -64,5 +84,25 @@ def google_auth_callback(data: GoogleAuthCallback):
         raise HTTPException(status_code=401, detail='Email not found or not verified')
     if settings.authorized_emails or settings.authorized_hds:
         if email not in settings.authorized_emails and hd not in settings.authorized_hds:
-            raise HTTPException(status_code=401, detail='Not authorized')
-    return claims
+            raise HTTPException(status_code=401, detail='User not authorized')
+    
+    token_data = TokenData(sub=email, name=claims.get('name'), picture=claims.get('picture'))
+    access_token = create_access_token(token_data.model_dump())
+    return {'access_token': access_token}
+
+class User(BaseModel):
+    sub: str
+    name: str
+    picture: str
+
+def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)]):
+    try:
+        payload = jwt.decode(token.credentials, settings.access_token_secret, algorithms=['HS256'])
+        token_data = TokenData.model_validate(payload)
+    except:
+        raise HTTPException(status_code=401, detail='Could not validate credentials')
+    return User(**token_data.model_dump())
+
+@app.get('/api/auth/profile')
+def profile(current_user: Annotated[User, Depends(get_current_user)]):
+    return current_user

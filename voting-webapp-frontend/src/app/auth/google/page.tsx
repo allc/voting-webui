@@ -1,12 +1,14 @@
 'use client';
 
+import { UserContext } from "@/app/UserProvider";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useContext, useEffect } from "react";
 
 export default function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [, auth] = useContext(UserContext);
 
   const login = async (code: string) => {
     try {
@@ -22,7 +24,10 @@ export default function Home() {
         router.push('/');
       }
       const json = await response.json();
-      console.log(json);
+      const accessToken = json.access_token;
+      localStorage.setItem('access_token', accessToken);
+      auth();
+      router.push('/');
     } catch (e: unknown) {
       if (e instanceof Error) {
         alert(e.message);
@@ -35,7 +40,7 @@ export default function Home() {
   useEffect(() => {
     const storedState = localStorage.getItem('state');
     const state = searchParams.get('state');
-    // localStorage.removeItem('state');
+    localStorage.removeItem('state');
     if (storedState && storedState === state) {
       const code = searchParams.get('code');
       if (code) {

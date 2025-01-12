@@ -1,12 +1,8 @@
 import { Website } from "./Website";
 
 interface User {
-  id: number;
-  email: string;
+  sub: number;
   name: string;
-  superuser: boolean;
-  createdAt: string;
-  activeAt: string;
-  website: Website[];
+  picture: string;
   accessToken: string;
 }
