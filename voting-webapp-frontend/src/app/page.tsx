@@ -1,11 +1,11 @@
 'use client';
 
-import { Button, Card, Center, Container, Group, Text, Title } from "@mantine/core";
+import { Button, Title } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
+  const router = useRouter();
   const handleAdminLoginButtonClick = async () => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/auth/google`, {
@@ -15,7 +15,9 @@ export default function Home() {
         },
       });
       const json = await response.json();
-      console.log(json);
+      const { url, state } = json;
+      localStorage.setItem('state', state);
+      router.push(url);
     } catch (e: unknown) {
       if (e instanceof Error) {
         alert(e.message);
