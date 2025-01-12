@@ -3,7 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import '@mantine/core/styles.css';
 
-import { ColorSchemeScript, Container, MantineProvider } from '@mantine/core';
+import { Container, MantineProvider } from '@mantine/core';
 import NavBar from "@/components/Navbar";
 import UserProvider from "./UserProvider";
 
@@ -31,7 +31,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <ColorSchemeScript />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

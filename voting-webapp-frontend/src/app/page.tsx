@@ -3,9 +3,13 @@
 import { Button, Title } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { use, useContext, useEffect } from "react";
+import { UserContext } from "./UserProvider";
 
 export default function Home() {
   const router = useRouter();
+  const [user] = useContext(UserContext);
+
   const handleAdminLoginButtonClick = async () => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/auth/google`, {
@@ -26,6 +30,12 @@ export default function Home() {
       }
     }
   }
+
+  useEffect(() => {
+    if (user) {
+      router.push('/admin');
+    }
+  }, [user]);
 
   return (
     <>

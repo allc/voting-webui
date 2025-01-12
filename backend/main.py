@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
+import hashlib
 from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from urllib import parse
 import secrets
@@ -8,6 +9,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import requests
 from pydantic import BaseModel
 import jwt
+import json
+import os
 from .config import settings
 
 bearer_scheme = HTTPBearer()
@@ -106,3 +109,41 @@ def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(bear
 @app.get('/api/auth/profile')
 def profile(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user
+
+@app.post('/api/admin/user-list')
+def upload_user_list(
+    file: UploadFile,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    with open('data/user_list.txt', 'wb') as f:
+        f.write(file.file.read())
+    with open('data/user_list.txt', 'r') as f:
+        num_lines = sum(1 for line in f if line.strip())
+    with open('data/user_list.txt', 'rb') as f:
+        file_hash = hashlib.sha256(f.read()).hexdigest()
+    details = {
+        'filename': file.filename,
+        'num_users': num_lines, # does not check duplicates
+        'file_sha256': file_hash,
+        'uploaded_at': datetime.now(timezone.utc).isoformat(),
+        'uploaded_by': current_user.sub,
+    }
+    with open('data/user_list_details.json', 'w') as f:
+        f.write(json.dumps(details, indent=2) + '\n')
+    return {'message': 'File uploaded'}
+
+@app.get('/api/admin/user-list')
+def get_user_list_details():
+    if not os.path.exists('data/user_list_details.json'):
+        raise HTTPException(status_code=404, detail='User list not found')
+    with open('data/user_list_details.json', 'r') as f:
+        details = json.load(f)
+    return details
+
+@app.delete('/api/admin/user-list')
+def delete_user_list():
+    if os.path.exists('data/user_list_details.json'):
+        os.remove('data/user_list_details.json')
+    if os.path.exists('data/user_list.txt'):
+        os.remove('data/user_list.txt')
+    return {'message': 'User list deleted'}

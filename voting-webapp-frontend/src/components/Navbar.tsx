@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { Group, Image, Menu, Text, UnstyledButton } from '@mantine/core'
 import { useContext, useEffect, useState } from 'react'
 import { UserContext } from '@/app/UserProvider'
-import { IconLogout } from '@tabler/icons-react'
+import { IconHammer, IconLogout, IconUpload } from '@tabler/icons-react'
 
 const Title = () => (
   <Link href='/'>
@@ -49,7 +49,6 @@ const NavBar = () => {
     const navLinks: NavLink[] = [];
     if (user) {
       navLinks.push(...[
-        { href: '/admin', label: 'Admin' },
       ]);
     }
     setNavLinks(navLinks);
@@ -71,25 +70,44 @@ const NavBar = () => {
             />
           ))}
           {user &&
-            <Menu trigger='click-hover' openDelay={100} closeDelay={400}>
-              <Menu.Target>
-                <UnstyledButton>
-                  <Group>
-                    <Image mah={24} maw={24} src={user.picture}></Image>
-                    <Text>{user.name}</Text>
-                  </Group>
-                </UnstyledButton>
-              </Menu.Target>
+            <>
+              <Menu trigger='click-hover' openDelay={100} closeDelay={400}>
+                <Menu.Target>
+                  <UnstyledButton>
+                    <Group>
+                      <IconHammer></IconHammer>
+                      <Text>Admin</Text>
+                    </Group>
+                  </UnstyledButton>
+                </Menu.Target>
 
-              <Menu.Dropdown>
-                <Menu.Item disabled>
-                  {user.sub}
-                </Menu.Item>
-                <Menu.Item leftSection={<IconLogout></IconLogout>} onClick={logout}>
-                  Logout
-                </Menu.Item>
-              </Menu.Dropdown>
-            </Menu>
+                <Menu.Dropdown>
+                  <Menu.Item leftSection={<IconUpload></IconUpload>} component='a' href='/admin/upload'>
+                    Upload Voting Forms and User List
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+
+              <Menu trigger='click-hover' openDelay={100} closeDelay={400}>
+                <Menu.Target>
+                  <UnstyledButton>
+                    <Group>
+                      <Image mah={24} maw={24} src={user.picture}></Image>
+                      <Text>{user.name}</Text>
+                    </Group>
+                  </UnstyledButton>
+                </Menu.Target>
+
+                <Menu.Dropdown>
+                  <Menu.Item disabled>
+                    {user.sub}
+                  </Menu.Item>
+                  <Menu.Item leftSection={<IconLogout></IconLogout>} onClick={logout}>
+                    Logout
+                  </Menu.Item>
+                </Menu.Dropdown>
+              </Menu>
+            </>
           }
         </div>
       </div>

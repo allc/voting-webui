@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect } from "react";
 
-export default function Home() {
+export default function GoogleAuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, auth] = useContext(UserContext);
@@ -27,7 +27,7 @@ export default function Home() {
       const accessToken = json.access_token;
       localStorage.setItem('access_token', accessToken);
       auth();
-      router.push('/');
+      router.push('/admin');
     } catch (e: unknown) {
       if (e instanceof Error) {
         alert(e.message);
