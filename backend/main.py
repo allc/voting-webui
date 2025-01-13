@@ -11,6 +11,7 @@ from pydantic import BaseModel
 import jwt
 import json
 import os
+from openpyxl import load_workbook
 from .config import settings
 
 bearer_scheme = HTTPBearer()
@@ -117,8 +118,11 @@ def upload_user_list(
 ):
     with open('data/user_list.txt', 'wb') as f:
         f.write(file.file.read())
-    with open('data/user_list.txt', 'r') as f:
-        num_lines = sum(1 for line in f if line.strip())
+    try:
+        with open('data/user_list.txt', 'r') as f:
+            num_lines = sum(1 for line in f if line.strip())
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail='File does not seem to be a text file')
     with open('data/user_list.txt', 'rb') as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()
     details = {
@@ -147,3 +151,30 @@ def delete_user_list():
     if os.path.exists('data/user_list.txt'):
         os.remove('data/user_list.txt')
     return {'message': 'User list deleted'}
+
+@app.post('/api/admin/voting-form')
+def upload_voting_form(
+    file: UploadFile,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    with open('data/voting_form.xlsx', 'wb') as f:
+        f.write(file.file.read())
+    with open('data/voting_form.xlsx', 'rb') as f:
+        file_hash = hashlib.sha256(f.read()).hexdigest()
+    details = {
+        'filename': file.filename,
+        'file_sha256': file_hash,
+        'uploaded_at': datetime.now(timezone.utc).isoformat(),
+        'uploaded_by': current_user.sub,
+    }
+    with open('data/voting_form_details.json', 'w') as f:
+        f.write(json.dumps(details, indent=2) + '\n')
+    return {'message': 'File uploaded'}
+
+@app.get('/api/admin/voting-form')
+def get_voting_form_details():
+    if not os.path.exists('data/voting_form_details.json'):
+        raise HTTPException(status_code=404, detail='Voting form not found')
+    with open('data/voting_form_details.json', 'r') as f:
+        details = json.load(f)
+    return details

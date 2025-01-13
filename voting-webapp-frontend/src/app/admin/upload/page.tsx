@@ -3,7 +3,7 @@
 import { UserContext } from "@/app/UserProvider";
 import { ActionIcon, Card, FileInput, Group, Table, Title } from "@mantine/core";
 import { IconTrash } from "@tabler/icons-react";
-import { use, useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 
 export default function AdminUpload() {
   interface UserListDetails {
@@ -16,6 +16,7 @@ export default function AdminUpload() {
 
   const [user] = useContext(UserContext);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
+  const [votingFormDetails, setVotingFormDetails] = useState<UserListDetails | null>(null);
 
   const loadUserListDetails = async () => {
     if (!user) {
@@ -51,9 +52,41 @@ export default function AdminUpload() {
         body: formData,
       });
       if (!result.ok) {
-        throw new Error('Failed to upload user list');
+        const json = await result.json();
+        throw new Error(json.detail);
       }
       loadUserListDetails();
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  const handleVotingFormChange = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    if (!user) {
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+        body: formData,
+      });
+      if (!result.ok) {
+        const json = await result.json();
+        throw new Error(json.detail);
+      }
+      // loadUserListDetails();
     } catch (e: unknown) {
       if (e instanceof Error) {
         alert(e.message);
@@ -139,15 +172,32 @@ export default function AdminUpload() {
     </Card>
   );
 
-  return (
-    <>
-      <Title order={1}>Upload Voting Forms and User List</Title>
-      {userListComponent}
+  const votingFormComponent = votingFormDetails ? (
+    <Card mt='md' withBorder>
+      <Group justify="space-between">
+        <Title order={2}>User List</Title>
+        <ActionIcon variant='filled' aria-label="Delete user list" color="red" onClick={handleDeleteUserList}>
+          <IconTrash />
+        </ActionIcon>
+      </Group>
+    </Card>
+  ) : (
+    <Card mt='md' withBorder>
       <FileInput
         label="Voting form"
         description="Main voting form for authenticated users. Downloaded from Microsoft Forms"
         placeholder="Select file"
+        accept=".xlsx"
+        onChange={handleVotingFormChange}
       />
+    </Card>
+  );
+
+  return (
+    <>
+      <Title order={1}>Upload Voting Forms and User List</Title>
+      {userListComponent}
+      {votingFormComponent}
       <FileInput
         label="Axillary voting form"
         description="Voting form for users who could not access the main voting form, voted in person. Downloaded from Microsoft Forms"
