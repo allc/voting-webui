@@ -1,8 +1,9 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
-import { ActionIcon, Card, FileInput, Group, Table, Title } from "@mantine/core";
-import { IconTrash } from "@tabler/icons-react";
+import { ActionIcon, Card, FileInput, Group, Table, Text, Title } from "@mantine/core";
+import { Dropzone } from "@mantine/dropzone";
+import { IconFileTypeTxt, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 import { useContext, useEffect, useState } from "react";
 
 export default function AdminUpload() {
@@ -63,6 +64,13 @@ export default function AdminUpload() {
         throw e;
       }
     }
+  }
+
+  const handleUserListDrop = async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+    handleUserListChange(files[0]);
   }
 
   const handleVotingFormChange = async (file: File | null) => {
@@ -163,12 +171,32 @@ export default function AdminUpload() {
     </Card>
   ) : (
     <Card mt='md' withBorder>
-      <FileInput
-        label="User list"
-        description="To verify users. A list of usernames (without email domain), one per line. Obtained from the membership list"
-        placeholder="Select file"
-        onChange={handleUserListChange}
-      />
+      <Title order={2}>User List</Title>
+      <Dropzone
+        onDrop={handleUserListDrop}
+        maxFiles={1}
+      >
+        <Group justify="center" gap="xl" mih={220} style={{ pointerEvents: 'none' }}>
+          <Dropzone.Accept>
+            <IconUpload size={52} color="var(--mantine-color-blue-6)" stroke={1.5} />
+          </Dropzone.Accept>
+          <Dropzone.Reject>
+            <IconX size={52} color="var(--mantine-color-red-6)" stroke={1.5} />
+          </Dropzone.Reject>
+          <Dropzone.Idle>
+          <IconFileTypeTxt size={52} color="var(--mantine-color-dimmed)" stroke={1.5} />
+          </Dropzone.Idle>
+
+          <div>
+            <Text size="xl" inline>
+              Drag user list here or click to select files
+            </Text>
+            <Text size="sm" c="dimmed" inline mt={7}>
+            To verify users. A list of usernames (without email domain), one per line. Obtained from the membership list
+            </Text>
+          </div>
+        </Group>
+      </Dropzone>
     </Card>
   );
 
@@ -198,11 +226,6 @@ export default function AdminUpload() {
       <Title order={1}>Upload Voting Forms and User List</Title>
       {userListComponent}
       {votingFormComponent}
-      <FileInput
-        label="Axillary voting form"
-        description="Voting form for users who could not access the main voting form, voted in person. Downloaded from Microsoft Forms"
-        placeholder="Select file"
-      />
     </>
   )
 }
