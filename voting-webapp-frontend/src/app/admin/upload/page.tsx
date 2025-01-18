@@ -1,8 +1,10 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
-import { Accordion, ActionIcon, Alert, Badge, Card, FileInput, Group, Spoiler, Table, Text, Title } from "@mantine/core";
+import { Accordion, ActionIcon, Alert, Badge, Button, Card, Checkbox, Drawer, FileInput, Group, Modal, Spoiler, Table, Text, Title } from "@mantine/core";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
+import { useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
 import { IconAlertTriangle, IconFileSpreadsheet, IconFileTypeTxt, IconFileTypeXls, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 import { useContext, useEffect, useState } from "react";
 
@@ -28,6 +30,12 @@ export default function AdminUpload() {
   const [user] = useContext(UserContext);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
+  const calculateResultsForm = useForm({
+    mode: 'uncontrolled',
+    initialValues: {
+      'checkUserList': !!userListDetails,
+    }
+  })
 
   const loadUserListDetails = async () => {
     if (!user) {
@@ -126,19 +134,7 @@ export default function AdminUpload() {
       return;
     }
     const data = await result.json();
-    const custom_columns = data.columns.filter(
-      (column: string) => !ms_form_columns.includes(column)
-    ).map((column: string) => column.trim());
-    const default_columns = ms_form_columns.filter((column: string) => data.columns.includes(column));
-    setVotingFormDetails({
-      filename: data.filename,
-      custom_columns: custom_columns,
-      default_columns: default_columns,
-      num_responses: data.num_responses,
-      file_sha256: data.file_sha256,
-      uploaded_at: data.uploaded_at,
-      uploaded_by: data.uploaded_by,
-    });
+    setVotingFormDetails(data);
   }
 
   const handleVotingFormUpload = async (file: File | null) => {
@@ -211,6 +207,10 @@ export default function AdminUpload() {
     loadUserListDetails();
     loadVotingFormDetails();
   }, [user]);
+
+  useEffect(() => {
+    calculateResultsForm.setFieldValue('checkUserList', !!userListDetails);
+  }, [userListDetails]);
 
   const userListComponent = userListDetails ? (
     <Card mt='md' withBorder>
@@ -375,9 +375,20 @@ export default function AdminUpload() {
 
   return (
     <>
-      <Title order={1}>Upload Voting Forms and User List</Title>
+      <Title order={1}>Upload Voting Form and User List</Title>
       {userListComponent}
       {votingFormComponent}
+      <Card mt='md' withBorder>
+        <form>
+          <Checkbox
+            label='Check against user list'
+            key={calculateResultsForm.key('checkUserList')}
+            disabled={!userListDetails}
+            {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
+          />
+          <Button type='submit' mt='md'>Calculate Results</Button>
+        </form>
+      </Card>
     </>
   )
 }

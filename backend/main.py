@@ -183,10 +183,14 @@ def upload_voting_form(
         num_responses = get_spreadsheet_num_rows(ws) - 1
     except:
         raise HTTPException(status_code=400, detail='Error occurred, maybe file is not a valid .xlsx file')
+    MS_FORM_COLUMNS = ['ID', 'Start time', 'Completion time', 'Email', 'Name', 'Last modified time']
+    custom_columns = [col for col in columns if col not in MS_FORM_COLUMNS]
+    default_columns = [col for col in MS_FORM_COLUMNS if col in columns]
     details = {
         'filename': file.filename,
         'file_sha256': file_hash,
-        'columns': columns,
+        'custom_columns': custom_columns,
+        'default_columns': default_columns,
         'num_responses': num_responses,
         'uploaded_at': datetime.now(timezone.utc).isoformat(),
         'uploaded_by': current_user.sub,

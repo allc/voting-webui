@@ -55,7 +55,7 @@ const NavBar = () => {
   }, [user]);
 
   return (
-    <nav className="sticky top-0 z-[100]  p-0 w-screen border-b-border border-b-2">
+    <nav className="sticky top-0 z-[100]  p-0 w-screen bg-background border-b-border border-b-2">
       <div className="container max-w-5xl mx-auto flex justify-between items-center py-4 px-4 lg:px-0">
         <div className="flex items-center gap-4">
           <Title />
