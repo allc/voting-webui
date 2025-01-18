@@ -1,9 +1,9 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
-import { ActionIcon, Card, FileInput, Group, Table, Text, Title } from "@mantine/core";
-import { Dropzone } from "@mantine/dropzone";
-import { IconFileTypeTxt, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
+import { Accordion, ActionIcon, Alert, Badge, Card, FileInput, Group, Spoiler, Table, Text, Title } from "@mantine/core";
+import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
+import { IconAlertTriangle, IconFileSpreadsheet, IconFileTypeTxt, IconFileTypeXls, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 import { useContext, useEffect, useState } from "react";
 
 export default function AdminUpload() {
@@ -15,9 +15,19 @@ export default function AdminUpload() {
     uploaded_by: string;
   }
 
+  interface VotingFormDetails {
+    filename: string;
+    custom_columns: string[];
+    default_columns: string[];
+    num_responses: number;
+    file_sha256: string;
+    uploaded_at: string;
+    uploaded_by: string;
+  }
+
   const [user] = useContext(UserContext);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
-  const [votingFormDetails, setVotingFormDetails] = useState<UserListDetails | null>(null);
+  const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
 
   const loadUserListDetails = async () => {
     if (!user) {
@@ -35,7 +45,7 @@ export default function AdminUpload() {
     setUserListDetails(data);
   }
 
-  const handleUserListChange = async (file: File | null) => {
+  const handleUserListUpload = async (file: File | null) => {
     if (!file) {
       return;
     }
@@ -70,38 +80,7 @@ export default function AdminUpload() {
     if (files.length === 0) {
       return;
     }
-    handleUserListChange(files[0]);
-  }
-
-  const handleVotingFormChange = async (file: File | null) => {
-    if (!file) {
-      return;
-    }
-    if (!user) {
-      return;
-    }
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user.accessToken}`,
-        },
-        body: formData,
-      });
-      if (!result.ok) {
-        const json = await result.json();
-        throw new Error(json.detail);
-      }
-      // loadUserListDetails();
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        alert(e.message);
-      } else {
-        throw e;
-      }
-    }
+    handleUserListUpload(files[0]);
   }
 
   const handleDeleteUserList = async () => {
@@ -132,8 +111,105 @@ export default function AdminUpload() {
     }
   }
 
+  const ms_form_columns = ['ID', 'Start time', 'Completion time', 'Email', 'Name', 'Last modified time'];
+
+  const loadVotingFormDetails = async () => {
+    if (!user) {
+      return;
+    }
+    const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
+      headers: {
+        'Authorization': `Bearer ${user.accessToken}`,
+      },
+    });
+    if (!result.ok) {
+      return;
+    }
+    const data = await result.json();
+    const custom_columns = data.columns.filter(
+      (column: string) => !ms_form_columns.includes(column)
+    ).map((column: string) => column.trim());
+    const default_columns = ms_form_columns.filter((column: string) => data.columns.includes(column));
+    setVotingFormDetails({
+      filename: data.filename,
+      custom_columns: custom_columns,
+      default_columns: default_columns,
+      num_responses: data.num_responses,
+      file_sha256: data.file_sha256,
+      uploaded_at: data.uploaded_at,
+      uploaded_by: data.uploaded_by,
+    });
+  }
+
+  const handleVotingFormUpload = async (file: File | null) => {
+    if (!file) {
+      return;
+    }
+    if (!user) {
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+        body: formData,
+      });
+      if (!result.ok) {
+        const json = await result.json();
+        throw new Error(json.detail);
+      }
+      loadVotingFormDetails();
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  const handleVotingFormDrop = async (files: File[]) => {
+    if (files.length === 0) {
+      return;
+    }
+    handleVotingFormUpload(files[0]);
+  }
+
+  const handleDeleteVotingForm = async () => {
+    const confirm = window.confirm('Are you sure you want to delete the voting form?');
+    if (!confirm) {
+      return;
+    }
+    if (!user) {
+      return;
+    }
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        throw new Error('Failed to delete voting form');
+      }
+      setVotingFormDetails(null);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
   useEffect(() => {
     loadUserListDetails();
+    loadVotingFormDetails();
   }, [user]);
 
   const userListComponent = userListDetails ? (
@@ -173,6 +249,7 @@ export default function AdminUpload() {
     <Card mt='md' withBorder>
       <Title order={2}>User List</Title>
       <Dropzone
+        mt='md'
         onDrop={handleUserListDrop}
         maxFiles={1}
       >
@@ -184,7 +261,7 @@ export default function AdminUpload() {
             <IconX size={52} color="var(--mantine-color-red-6)" stroke={1.5} />
           </Dropzone.Reject>
           <Dropzone.Idle>
-          <IconFileTypeTxt size={52} color="var(--mantine-color-dimmed)" stroke={1.5} />
+            <IconFileTypeTxt size={52} color="var(--mantine-color-dimmed)" stroke={1.5} />
           </Dropzone.Idle>
 
           <div>
@@ -192,7 +269,7 @@ export default function AdminUpload() {
               Drag user list here or click to select files
             </Text>
             <Text size="sm" c="dimmed" inline mt={7}>
-            To verify users. A list of usernames (without email domain), one per line. Obtained from the membership list
+              To verify users. A list of usernames (without email domain), one per line. Obtained from the membership list
             </Text>
           </div>
         </Group>
@@ -203,21 +280,96 @@ export default function AdminUpload() {
   const votingFormComponent = votingFormDetails ? (
     <Card mt='md' withBorder>
       <Group justify="space-between">
-        <Title order={2}>User List</Title>
-        <ActionIcon variant='filled' aria-label="Delete user list" color="red" onClick={handleDeleteUserList}>
+        <Title order={2}>Voting Form</Title>
+        <ActionIcon variant='filled' aria-label="Delete user list" color="red" onClick={handleDeleteVotingForm}>
           <IconTrash />
         </ActionIcon>
       </Group>
+      <Table variant="vertical">
+        <Table.Tbody>
+          <Table.Tr>
+            <Table.Td>Filename</Table.Td>
+            <Table.Td>{votingFormDetails.filename}</Table.Td>
+          </Table.Tr>
+          <Table.Tr>
+            <Table.Td>SHA256</Table.Td>
+            <Table.Td>{votingFormDetails.file_sha256}</Table.Td>
+          </Table.Tr>
+          <Table.Tr>
+            <Table.Td>Columns</Table.Td>
+            <Table.Td>
+              <div>
+                {votingFormDetails.custom_columns.map((column_name) => (
+                  <Badge key={column_name} tt='none' size="lg" mr='xs' mb='xs' color="gray">{column_name}</Badge>
+                ))}
+              </div>
+              <div className='mt-3'>
+                {votingFormDetails.default_columns.map((column_name) => (
+                  <Badge key={column_name} tt='none' size="lg" mr='xs' mb='xs' color="gray">{column_name}</Badge>
+                ))}
+              </div>
+              {!votingFormDetails.default_columns.includes('Email') &&
+                <Alert variant="light" color="red" title="No Email column" icon={<IconAlertTriangle />}>
+                  Email column does not exist, it will not be able to validate against user list, and it is likely this file is not valid export from Microsoft Forms
+              </Alert>
+              }
+              {!ms_form_columns.every((column) => votingFormDetails.default_columns.includes(column)) &&
+                <Alert variant="light" color="yellow" title="Missing default column" icon={<IconAlertTriangle />} mt='xs'>
+                  Not all expected default columns ("ID", "Start time", "Completion time", "Email", "Name", "Last modified time") exist, and it is likely this file is not valid export from Microsoft Forms
+              </Alert>
+              }
+            </Table.Td>
+          </Table.Tr>
+          <Table.Tr>
+            <Table.Td>Number of responses</Table.Td>
+            <Table.Td>{votingFormDetails.num_responses}</Table.Td>
+          </Table.Tr>
+          <Table.Tr>
+            <Table.Td>Uploaded at</Table.Td>
+            <Table.Td>{votingFormDetails.uploaded_at}</Table.Td>
+          </Table.Tr>
+          <Table.Tr>
+            <Table.Td>Uploaded by</Table.Td>
+            <Table.Td>{votingFormDetails.uploaded_by}</Table.Td>
+          </Table.Tr>
+        </Table.Tbody>
+      </Table>
     </Card>
   ) : (
     <Card mt='md' withBorder>
-      <FileInput
-        label="Voting form"
-        description="Main voting form for authenticated users. Downloaded from Microsoft Forms"
-        placeholder="Select file"
-        accept=".xlsx"
-        onChange={handleVotingFormChange}
-      />
+      <Title order={2}>Voting Form</Title>
+      <Dropzone
+        mt='md'
+        onDrop={handleVotingFormDrop}
+        maxFiles={1}
+        accept={[MIME_TYPES.xlsx]}
+      >
+        <Group justify="center" gap="xl" mih={220} style={{ pointerEvents: 'none' }}>
+          <Dropzone.Accept>
+            <IconUpload size={52} color="var(--mantine-color-blue-6)" stroke={1.5} />
+          </Dropzone.Accept>
+          <Dropzone.Reject>
+            <IconX size={52} color="var(--mantine-color-red-6)" stroke={1.5} />
+          </Dropzone.Reject>
+          <Dropzone.Idle>
+            <IconFileSpreadsheet size={52} color="var(--mantine-color-dimmed)" stroke={1.5} />
+          </Dropzone.Idle>
+
+          <div>
+            <Text size="xl" inline>
+              Drag voting form here or click to select files
+            </Text>
+            <Dropzone.Reject>
+              <Text size="xl" inline mt={7}>
+                Must be .xlsx file
+              </Text>
+            </Dropzone.Reject>
+            <Text size="sm" c="dimmed" inline mt={7}>
+              Voting form for authenticated users. Downloaded from Microsoft Forms. Must be in .xlsx format
+            </Text>
+          </div>
+        </Group>
+      </Dropzone>
     </Card>
   );
 

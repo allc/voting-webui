@@ -12,6 +12,7 @@ import jwt
 import json
 import os
 from openpyxl import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
 from .config import settings
 
 bearer_scheme = HTTPBearer()
@@ -64,6 +65,20 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({'exp': expire})
     encoded_jwt = jwt.encode(to_encode, settings.access_token_secret, algorithm='HS256')
     return encoded_jwt
+
+def get_spreadsheet_worksheet(file_path: str):
+    wb = load_workbook(file_path)
+    ws = wb.active or wb.worksheets[0]
+    return ws
+
+def get_spreadsheet_columns(ws: Worksheet):
+    columns = []
+    for cell in ws[1]:
+        columns.append(cell.value)
+    return columns
+
+def get_spreadsheet_num_rows(ws: Worksheet):
+    return ws.max_row
 
 @app.post("/api/auth/google")
 def google_auth_callback(data: GoogleAuthCallback):
@@ -161,9 +176,18 @@ def upload_voting_form(
         f.write(file.file.read())
     with open('data/voting_form.xlsx', 'rb') as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()
+    # get spreadsheet info
+    try:
+        ws = get_spreadsheet_worksheet('data/voting_form.xlsx')
+        columns = get_spreadsheet_columns(ws)
+        num_responses = get_spreadsheet_num_rows(ws) - 1
+    except:
+        raise HTTPException(status_code=400, detail='Error occurred, maybe file is not a valid .xlsx file')
     details = {
         'filename': file.filename,
         'file_sha256': file_hash,
+        'columns': columns,
+        'num_responses': num_responses,
         'uploaded_at': datetime.now(timezone.utc).isoformat(),
         'uploaded_by': current_user.sub,
     }
@@ -178,3 +202,11 @@ def get_voting_form_details():
     with open('data/voting_form_details.json', 'r') as f:
         details = json.load(f)
     return details
+
+@app.delete('/api/admin/voting-form')
+def delete_voting_form():
+    if os.path.exists('data/voting_form_details.json'):
+        os.remove('data/voting_form_details.json')
+    if os.path.exists('data/voting_form.xlsx'):
+        os.remove('data/voting_form.xlsx')
+    return {'message': 'Voting form deleted'}
