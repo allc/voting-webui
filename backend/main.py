@@ -189,8 +189,10 @@ def upload_voting_form(
     details = {
         'filename': file.filename,
         'file_sha256': file_hash,
-        'custom_columns': custom_columns,
-        'default_columns': default_columns,
+        'columns': {
+            'default': default_columns,
+            'custom': custom_columns
+        },
         'num_responses': num_responses,
         'uploaded_at': datetime.now(timezone.utc).isoformat(),
         'uploaded_by': current_user.sub,

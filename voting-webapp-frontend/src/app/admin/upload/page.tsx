@@ -1,7 +1,7 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
-import { Accordion, ActionIcon, Alert, Badge, Button, Card, Checkbox, Drawer, FileInput, Group, Modal, Spoiler, Table, Text, Title } from "@mantine/core";
+import { Accordion, ActionIcon, Alert, Badge, Button, Card, Checkbox, Drawer, FileInput, Group, InputBase, Modal, Pill, Spoiler, Table, Text, Title, Tooltip } from "@mantine/core";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
@@ -19,8 +19,10 @@ export default function AdminUpload() {
 
   interface VotingFormDetails {
     filename: string;
-    custom_columns: string[];
-    default_columns: string[];
+    columns: {
+      'default': string[],
+      'custom': string[],
+    },
     num_responses: number;
     file_sha256: string;
     uploaded_at: string;
@@ -176,7 +178,7 @@ export default function AdminUpload() {
   }
 
   const handleDeleteVotingForm = async () => {
-    const confirm = window.confirm('Are you sure you want to delete the voting form?');
+    const confirm = window.confirm('Are you sure you want to delete the voting response?');
     if (!confirm) {
       return;
     }
@@ -191,7 +193,7 @@ export default function AdminUpload() {
         },
       });
       if (!result.ok) {
-        throw new Error('Failed to delete voting form');
+        throw new Error('Failed to delete voting response');
       }
       setVotingFormDetails(null);
     } catch (e: unknown) {
@@ -280,11 +282,21 @@ export default function AdminUpload() {
   const votingFormComponent = votingFormDetails ? (
     <Card mt='md' withBorder>
       <Group justify="space-between">
-        <Title order={2}>Voting Form</Title>
+        <Title order={2}>Voting Response</Title>
         <ActionIcon variant='filled' aria-label="Delete user list" color="red" onClick={handleDeleteVotingForm}>
           <IconTrash />
         </ActionIcon>
       </Group>
+      {!votingFormDetails.columns.default.includes('Email') &&
+        <Alert variant="light" color="red" title="No Email column" icon={<IconAlertTriangle />}>
+          Email column does not exist, it will not be able to validate against user list, and it is likely this file is not valid export from Microsoft Forms
+        </Alert>
+      }
+      {!ms_form_columns.every((column) => votingFormDetails.columns.default.includes(column)) &&
+        <Alert variant="light" color="yellow" title="Missing default column" icon={<IconAlertTriangle />} mt='xs'>
+          Not all expected default columns ("ID", "Start time", "Completion time", "Email", "Name", "Last modified time") exist, and it is likely this file is not valid export from Microsoft Forms
+        </Alert>
+      }
       <Table variant="vertical">
         <Table.Tbody>
           <Table.Tr>
@@ -294,31 +306,6 @@ export default function AdminUpload() {
           <Table.Tr>
             <Table.Td>SHA256</Table.Td>
             <Table.Td>{votingFormDetails.file_sha256}</Table.Td>
-          </Table.Tr>
-          <Table.Tr>
-            <Table.Td>Columns</Table.Td>
-            <Table.Td>
-              <div>
-                {votingFormDetails.custom_columns.map((column_name) => (
-                  <Badge key={column_name} tt='none' size="lg" mr='xs' mb='xs' color="gray">{column_name}</Badge>
-                ))}
-              </div>
-              <div className='mt-3'>
-                {votingFormDetails.default_columns.map((column_name) => (
-                  <Badge key={column_name} tt='none' size="lg" mr='xs' mb='xs' color="gray">{column_name}</Badge>
-                ))}
-              </div>
-              {!votingFormDetails.default_columns.includes('Email') &&
-                <Alert variant="light" color="red" title="No Email column" icon={<IconAlertTriangle />}>
-                  Email column does not exist, it will not be able to validate against user list, and it is likely this file is not valid export from Microsoft Forms
-              </Alert>
-              }
-              {!ms_form_columns.every((column) => votingFormDetails.default_columns.includes(column)) &&
-                <Alert variant="light" color="yellow" title="Missing default column" icon={<IconAlertTriangle />} mt='xs'>
-                  Not all expected default columns ("ID", "Start time", "Completion time", "Email", "Name", "Last modified time") exist, and it is likely this file is not valid export from Microsoft Forms
-              </Alert>
-              }
-            </Table.Td>
           </Table.Tr>
           <Table.Tr>
             <Table.Td>Number of responses</Table.Td>
@@ -337,7 +324,7 @@ export default function AdminUpload() {
     </Card>
   ) : (
     <Card mt='md' withBorder>
-      <Title order={2}>Voting Form</Title>
+      <Title order={2}>Voting response</Title>
       <Dropzone
         mt='md'
         onDrop={handleVotingFormDrop}
@@ -357,7 +344,7 @@ export default function AdminUpload() {
 
           <div>
             <Text size="xl" inline>
-              Drag voting form here or click to select files
+              Drag voting response file here or click to select files
             </Text>
             <Dropzone.Reject>
               <Text size="xl" inline mt={7}>
@@ -365,7 +352,7 @@ export default function AdminUpload() {
               </Text>
             </Dropzone.Reject>
             <Text size="sm" c="dimmed" inline mt={7}>
-              Voting form for authenticated users. Downloaded from Microsoft Forms. Must be in .xlsx format
+              Voting response file for authenticated users. Downloaded from Microsoft Forms. Must be in .xlsx format
             </Text>
           </div>
         </Group>
@@ -375,18 +362,48 @@ export default function AdminUpload() {
 
   return (
     <>
-      <Title order={1}>Upload Voting Form and User List</Title>
+      <Title order={1}>Upload voting response and User List</Title>
       {userListComponent}
       {votingFormComponent}
       <Card mt='md' withBorder>
         <form>
-          <Checkbox
-            label='Check against user list'
-            key={calculateResultsForm.key('checkUserList')}
-            disabled={!userListDetails}
-            {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
-          />
-          <Button type='submit' mt='md'>Calculate Results</Button>
+          <Tooltip
+            label="User list not provided"
+            events={{ hover: !userListDetails, focus: false, touch: !userListDetails }}
+          >
+            <Checkbox
+              label='Check against user list'
+              key={calculateResultsForm.key('checkUserList')}
+              disabled={!userListDetails}
+              {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
+            />
+          </Tooltip>
+          {votingFormDetails && (
+            <Card mt='md' withBorder>
+              <Title order={2}>Custom Columns</Title>
+              <InputBase component='div' multiline>
+              <Pill.Group>
+                {votingFormDetails.columns.custom.map((column_name) => (
+                  <Pill key={column_name} size="lg">{column_name}</Pill>
+                ))}
+                </Pill.Group>
+              </InputBase>
+              <Title order={2} mt='md'>Non-voting Columns</Title>
+              <InputBase component='div' multiline>
+              <Pill.Group>
+                {votingFormDetails.columns.default.map((column_name) => (
+                  <Pill key={column_name} size="lg">{column_name}</Pill>
+                ))}
+                </Pill.Group>
+              </InputBase>
+            </Card>
+          )}
+          <Tooltip
+            label="Voting response not provided"
+            events={{ hover: !votingFormDetails, focus: false, touch: !votingFormDetails }}
+          >
+            <Button type='submit' mt='md' disabled={!votingFormDetails}>Calculate Results</Button>
+          </Tooltip>
         </form>
       </Card>
     </>
