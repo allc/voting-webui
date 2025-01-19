@@ -448,7 +448,7 @@ export default function AdminUpload() {
             <Text size='sm' c='dimmed' mt='xs'>
               There is currently a UI bug makes it hard to rearrange the order of columns within the each box if the the column names showing in multiple rows in the box. You can still move the columns into a different box as needed. However, you can use a keyboard to move columns around smoothly. use (Tab-)Shift key to navigate columns, space bar to lift and place a column, arrow keys to move a column
             </Text>
-            <Alert variant="light" color="yellow" title="Please make sure the column type is correct" icon={<IconAlertTriangle />} mt='md'>
+            <Alert variant="light" color="yellow" title="Please make sure the column type is correct" icon={<IconAlertTriangle />}>
               Incorrect column type can break the app, prevent the app from calculating the results, or lead to unexpected results, and interpretation to the result may not make sense
             </Alert>
             <DragDropContext

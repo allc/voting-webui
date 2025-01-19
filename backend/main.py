@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import datetime, timedelta, timezone
 import hashlib
 from typing import Annotated
@@ -76,7 +77,7 @@ def get_spreadsheet_num_rows(ws: Worksheet):
 
 def guess_is_ranking_column(ws: Worksheet, col_i: int):
     try:
-        candidates = set()
+        candidate_sets = Counter()
         for row_i in range(2, ws.max_row + 1):
             cell = ws.cell(row=row_i, column=col_i)
             value = cell.value
@@ -88,8 +89,12 @@ def guess_is_ranking_column(ws: Worksheet, col_i: int):
             if value[-1] != ';':
                 return False
             
-            candidates = candidates.union(set(value[:-1].split(';')))
-        return len(candidates) > 1
+            candidates = value[:-1].split(';')
+            candidates.sort()
+            candidates = tuple(candidates)
+            candidate_sets[candidates] += 1
+        most_common_candidate_set = candidate_sets.most_common(1)[0]
+        return len(most_common_candidate_set) > 1
     except:
         return False
 
