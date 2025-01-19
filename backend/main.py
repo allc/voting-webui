@@ -71,14 +71,45 @@ def get_spreadsheet_worksheet(file_path: str):
     ws = wb.active or wb.worksheets[0]
     return ws
 
-def get_spreadsheet_columns(ws: Worksheet):
-    columns = []
-    for cell in ws[1]:
-        columns.append(cell.value)
-    return columns
-
 def get_spreadsheet_num_rows(ws: Worksheet):
     return ws.max_row
+
+def guess_is_ranking_column(ws: Worksheet, col_i: int):
+    try:
+        candidates = set()
+        for row_i in range(2, ws.max_row + 1):
+            cell = ws.cell(row=row_i, column=col_i)
+            value = cell.value
+            if not value:
+                continue
+            
+            if type(value) != str:
+                return False
+            if value[-1] != ';':
+                return False
+            
+            candidates = candidates.union(set(value[:-1].split(';')))
+        return len(candidates) > 1
+    except:
+        return False
+
+def get_column_types(ws: Worksheet):
+    MS_FORM_COLUMNS = ['ID', 'Start time', 'Completion time', 'Email', 'Name', 'Last modified time']
+    columns = {
+        'default': [],
+        'ranking': [],
+        'choice_single_answer': [],
+        # 'choice_multiple_answer': [],
+    }
+    for col_i in range(1, ws.max_column + 1):
+        col_name = ws.cell(row=1, column=col_i).value
+        if col_name in MS_FORM_COLUMNS:
+            columns['default'].append({'name': col_name, 'index': col_i})
+        elif guess_is_ranking_column(ws, col_i):
+            columns['ranking'].append({'name': col_name, 'index': col_i})
+        else:
+            columns['choice_single_answer'].append({'name': col_name, 'index': col_i})
+    return columns
 
 @app.post("/api/auth/google")
 def google_auth_callback(data: GoogleAuthCallback):
@@ -179,20 +210,14 @@ def upload_voting_form(
     # get spreadsheet info
     try:
         ws = get_spreadsheet_worksheet('data/voting_form.xlsx')
-        columns = get_spreadsheet_columns(ws)
-        num_responses = get_spreadsheet_num_rows(ws) - 1
     except:
         raise HTTPException(status_code=400, detail='Error occurred, maybe file is not a valid .xlsx file')
-    MS_FORM_COLUMNS = ['ID', 'Start time', 'Completion time', 'Email', 'Name', 'Last modified time']
-    custom_columns = [{'name': col, 'index': i} for i, col in enumerate(columns) if col not in MS_FORM_COLUMNS]
-    default_columns = [{'name': col, 'index': i} for i, col in enumerate(MS_FORM_COLUMNS) if col in columns]
+    columns = get_column_types(ws)
+    num_responses = get_spreadsheet_num_rows(ws) - 1
     details = {
         'filename': file.filename,
         'file_sha256': file_hash,
-        'columns': {
-            'default': default_columns,
-            'custom': custom_columns
-        },
+        'columns': columns,
         'num_responses': num_responses,
         'uploaded_at': datetime.now(timezone.utc).isoformat(),
         'uploaded_by': current_user.sub,

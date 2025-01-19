@@ -25,7 +25,8 @@ export default function AdminUpload() {
 
   interface Columns {
     default: ColumnNameIndex[];
-    custom: ColumnNameIndex[];
+    ranking: ColumnNameIndex[];
+    choice_single_answer: ColumnNameIndex[];
   }
 
   interface VotingFormDetails {
@@ -38,15 +39,16 @@ export default function AdminUpload() {
   }
 
   const columnsTypeKeyNames = [
-    { 'key': 'custom', 'name': 'Custom Columns' },
+    { 'key': 'ranking', 'name': 'Ranking Columns' },
     { 'key': 'default', 'name': 'Non-voting Columns' },
+    { 'key': 'choice_single_answer', 'name': 'Choice (Single Answer) Columns' },
   ]
   const msFormsColumns = ['ID', 'Start time', 'Completion time', 'Email', 'Name']; // 'Last modified time' is also a default MS Forms column, but does not always exist
 
   const [user] = useContext(UserContext);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
-  const [columns, setColumns] = useState<Columns>({ 'default': [], 'custom': [] });
+  const [columns, setColumns] = useState<Columns>({ 'default': [], 'ranking': [], 'choice_single_answer': [] });
   const [drawerOpened, drawerOpenClose] = useDisclosure(false);
   const calculateResultsForm = useForm({
     mode: 'uncontrolled',
@@ -256,7 +258,7 @@ export default function AdminUpload() {
   }
 
   const resetColumns = () => {
-    const columnsCopy: Columns = { 'default': [], 'custom': [] };
+    const columnsCopy: Columns = { 'default': [], 'ranking': [], 'choice_single_answer': [] };
     if (votingFormDetails) {
       columnsTypeKeyNames.forEach((columnsTypeKeyName) => {
         columnsCopy[columnsTypeKeyName.key as keyof typeof columnsCopy] = [...votingFormDetails.columns[columnsTypeKeyName.key as keyof typeof columns]];
@@ -446,6 +448,9 @@ export default function AdminUpload() {
             <Text size='sm' c='dimmed' mt='xs'>
               There is currently a UI bug makes it hard to rearrange the order of columns within the each box if the the column names showing in multiple rows in the box. You can still move the columns into a different box as needed. However, you can use a keyboard to move columns around smoothly. use (Tab-)Shift key to navigate columns, space bar to lift and place a column, arrow keys to move a column
             </Text>
+            <Alert variant="light" color="yellow" title="Please make sure the column type is correct" icon={<IconAlertTriangle />} mt='md'>
+              Incorrect column type can break the app, prevent the app from calculating the results, or lead to unexpected results, and interpretation to the result may not make sense
+            </Alert>
             <DragDropContext
               onDragEnd={({ destination, source }) => {
                 if (!destination) {
@@ -469,6 +474,7 @@ export default function AdminUpload() {
                     <Droppable direction='horizontal' droppableId={columnsTypeKeyName.key}>
                       {(provided) => (
                         <Pill.Group
+                          mih='30'
                           ref={provided.innerRef}
                           {...provided.droppableProps}
                         >
@@ -500,12 +506,12 @@ export default function AdminUpload() {
           </>
         )}
         <Group justify='center' mt='md'>
-        <Tooltip
-          label="Voting response not provided"
-          events={{ hover: !votingFormDetails, focus: false, touch: !votingFormDetails }}
-        >
-          <Button type='submit' disabled={!votingFormDetails}>Calculate Results</Button>
-        </Tooltip>
+          <Tooltip
+            label="Voting response not provided"
+            events={{ hover: !votingFormDetails, focus: false, touch: !votingFormDetails }}
+          >
+            <Button type='submit' disabled={!votingFormDetails}>Calculate Results</Button>
+          </Tooltip>
         </Group>
       </form>
     </>
