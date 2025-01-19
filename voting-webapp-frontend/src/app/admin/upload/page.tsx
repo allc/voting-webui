@@ -218,8 +218,40 @@ export default function AdminUpload() {
     }
   }
 
-  const handleCalculateResults = () => {
-    console.log(columns);
+  const handleCalculateResults = async (values: { checkUserList: boolean; }) => {
+    if (!votingFormDetails) {
+      return;
+    }
+    if (!user) {
+      return;
+    }
+    const userListHash = userListDetails?.file_sha256;
+    const votingFormHash = votingFormDetails.file_sha256;
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/calculate-results`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_list_hash: userListHash,
+          voting_form_hash: votingFormHash,
+          check_user_list: values.checkUserList,
+          columns: columns,
+        }),
+      });
+      if (!result.ok) {
+        const json = await result.json();
+        throw new Error(json.detail);
+      }
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
   }
 
   useEffect(() => {
@@ -240,10 +272,6 @@ export default function AdminUpload() {
     }
     setColumns(columnsCopy);
   }, [votingFormDetails]);
-
-  useEffect(() => {
-    console.log(columns);
-  }, [columns]);
 
   const userListComponent = userListDetails ? (
     <Card mt='md' withBorder>
@@ -397,7 +425,7 @@ export default function AdminUpload() {
       <Text size='sm' c='dimmed'>
         Reloading the page will reset this form
       </Text>
-      <form onSubmit={calculateResultsForm.onSubmit(() => handleCalculateResults())}>
+      <form onSubmit={calculateResultsForm.onSubmit((values) => handleCalculateResults(values))}>
         <Tooltip
           label="User list not provided"
           events={{ hover: !userListDetails, focus: false, touch: !userListDetails }}
@@ -416,7 +444,7 @@ export default function AdminUpload() {
               The App has guessed the type of columns, if anything needs to be adjusted, drag the columns names to the correct box
             </Text>
             <Text size='sm' c='dimmed' mt='xs'>
-              There is currently a UI bug makes it hard to rearrange the order of columns within the each box if the the column names showing in multiple rows in the box. You can still move the columns into a different box as needed. However, you can use a keyboard to move columns around smoothly. use (tab-)shift key to navigate columns, space bar to lift and place a column, arrow keys to move a column
+              There is currently a UI bug makes it hard to rearrange the order of columns within the each box if the the column names showing in multiple rows in the box. You can still move the columns into a different box as needed. However, you can use a keyboard to move columns around smoothly. use (Tab-)Shift key to navigate columns, space bar to lift and place a column, arrow keys to move a column
             </Text>
             <DragDropContext
               onDragEnd={({ destination, source }) => {
@@ -440,7 +468,7 @@ export default function AdminUpload() {
                   <InputBase component='div' multiline>
                     <Droppable direction='horizontal' droppableId={columnsTypeKeyName.key}>
                       {(provided) => (
-                        <Pill.Group 
+                        <Pill.Group
                           ref={provided.innerRef}
                           {...provided.droppableProps}
                         >
@@ -466,6 +494,9 @@ export default function AdminUpload() {
                 </div>
               ))}
             </DragDropContext>
+            <div className="mt-3">
+              <Button color="red">Reset Column Types</Button>
+            </div>
           </>
         )}
         <Tooltip
