@@ -47,6 +47,7 @@ export default function AdminUpload() {
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
   const [columns, setColumns] = useState<Columns>({ 'default': [], 'custom': [] });
+  const [drawerOpened, drawerOpenClose] = useDisclosure(false);
   const calculateResultsForm = useForm({
     mode: 'uncontrolled',
     initialValues: {
@@ -254,6 +255,16 @@ export default function AdminUpload() {
     }
   }
 
+  const resetColumns = () => {
+    const columnsCopy: Columns = { 'default': [], 'custom': [] };
+    if (votingFormDetails) {
+      columnsTypeKeyNames.forEach((columnsTypeKeyName) => {
+        columnsCopy[columnsTypeKeyName.key as keyof typeof columnsCopy] = [...votingFormDetails.columns[columnsTypeKeyName.key as keyof typeof columns]];
+      });
+    }
+    setColumns(columnsCopy);
+  };
+
   useEffect(() => {
     loadUserListDetails();
     loadVotingFormDetails();
@@ -264,13 +275,7 @@ export default function AdminUpload() {
   }, [userListDetails]);
 
   useEffect(() => {
-    const columnsCopy: Columns = { 'default': [], 'custom': [] };
-    if (votingFormDetails) {
-      columnsTypeKeyNames.forEach((columnsTypeKeyName) => {
-        columnsCopy[columnsTypeKeyName.key as keyof typeof columnsCopy] = [...votingFormDetails.columns[columnsTypeKeyName.key as keyof typeof columns]];
-      });
-    }
-    setColumns(columnsCopy);
+    resetColumns();
   }, [votingFormDetails]);
 
   const userListComponent = userListDetails ? (
@@ -420,11 +425,7 @@ export default function AdminUpload() {
   );
 
   const calculateResultsFormComponent = (
-    <Card mt='md' withBorder>
-      <Title order={2}>Calculate Results</Title>
-      <Text size='sm' c='dimmed'>
-        Reloading the page will reset this form
-      </Text>
+    <>
       <form onSubmit={calculateResultsForm.onSubmit((values) => handleCalculateResults(values))}>
         <Tooltip
           label="User list not provided"
@@ -434,7 +435,6 @@ export default function AdminUpload() {
             label='Check against user list'
             key={calculateResultsForm.key('checkUserList')}
             disabled={!userListDetails}
-            mt='md'
             {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
           />
         </Tooltip>
@@ -495,18 +495,20 @@ export default function AdminUpload() {
               ))}
             </DragDropContext>
             <div className="mt-3">
-              <Button color="red">Reset Column Types</Button>
+              <Button color="red" onClick={resetColumns}>Reset Column Types</Button>
             </div>
           </>
         )}
+        <Group justify='center' mt='md'>
         <Tooltip
           label="Voting response not provided"
           events={{ hover: !votingFormDetails, focus: false, touch: !votingFormDetails }}
         >
-          <Button type='submit' mt='md' disabled={!votingFormDetails}>Calculate Results</Button>
+          <Button type='submit' disabled={!votingFormDetails}>Calculate Results</Button>
         </Tooltip>
+        </Group>
       </form>
-    </Card>
+    </>
   )
 
   return (
@@ -514,7 +516,19 @@ export default function AdminUpload() {
       <Title order={1}>Upload voting response and user list</Title>
       {userListComponent}
       {votingFormComponent}
-      {calculateResultsFormComponent}
+      <Drawer size='80%' opened={drawerOpened} onClose={drawerOpenClose.close} title="Calculate Results">
+        {calculateResultsFormComponent}
+      </Drawer>
+      <Group mt='md' justify='center'>
+        <Tooltip
+          label="Voting response not provided"
+          events={{ hover: !votingFormDetails, focus: false, touch: !votingFormDetails }}
+        >
+          <Button onClick={drawerOpenClose.open} disabled={!votingFormDetails}>
+            Calculate Results
+          </Button>
+        </Tooltip>
+      </Group>
     </>
   )
 }
