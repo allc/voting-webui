@@ -137,7 +137,7 @@ def upload_user_list(
         with open('data/user_list.txt', 'r') as f:
             num_lines = sum(1 for line in f if line.strip())
     except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail='File does not seem to be a text file')
+        raise HTTPException(status_code=400, detail='File does not seem to be a text file or contains non-Unicode characters')
     with open('data/user_list.txt', 'rb') as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()
     details = {
@@ -184,8 +184,8 @@ def upload_voting_form(
     except:
         raise HTTPException(status_code=400, detail='Error occurred, maybe file is not a valid .xlsx file')
     MS_FORM_COLUMNS = ['ID', 'Start time', 'Completion time', 'Email', 'Name', 'Last modified time']
-    custom_columns = [col for col in columns if col not in MS_FORM_COLUMNS]
-    default_columns = [col for col in MS_FORM_COLUMNS if col in columns]
+    custom_columns = [{'name': col, 'index': i} for i, col in enumerate(columns) if col not in MS_FORM_COLUMNS]
+    default_columns = [{'name': col, 'index': i} for i, col in enumerate(MS_FORM_COLUMNS) if col in columns]
     details = {
         'filename': file.filename,
         'file_sha256': file_hash,

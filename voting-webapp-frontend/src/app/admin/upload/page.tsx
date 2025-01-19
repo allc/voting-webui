@@ -1,10 +1,11 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
+import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import { Accordion, ActionIcon, Alert, Badge, Button, Card, Checkbox, Drawer, FileInput, Group, InputBase, Modal, Pill, Spoiler, Table, Text, Title, Tooltip } from "@mantine/core";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
 import { useForm } from "@mantine/form";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useListState } from "@mantine/hooks";
 import { IconAlertTriangle, IconFileSpreadsheet, IconFileTypeTxt, IconFileTypeXls, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 import { useContext, useEffect, useState } from "react";
 
@@ -17,11 +18,16 @@ export default function AdminUpload() {
     uploaded_by: string;
   }
 
+  interface ColumnNameIndex {
+    name: string,
+    index: number,
+  }
+
   interface VotingFormDetails {
     filename: string;
     columns: {
-      'default': string[],
-      'custom': string[],
+      'default': ColumnNameIndex[],
+      'custom': ColumnNameIndex[],
     },
     num_responses: number;
     file_sha256: string;
@@ -32,12 +38,14 @@ export default function AdminUpload() {
   const [user] = useContext(UserContext);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
+  const [customColumns, customColumnsHandlers] = useListState<ColumnNameIndex>([]);
   const calculateResultsForm = useForm({
     mode: 'uncontrolled',
     initialValues: {
       'checkUserList': !!userListDetails,
     }
   })
+
 
   const loadUserListDetails = async () => {
     if (!user) {
@@ -121,7 +129,7 @@ export default function AdminUpload() {
     }
   }
 
-  const ms_form_columns = ['ID', 'Start time', 'Completion time', 'Email', 'Name', 'Last modified time'];
+  const ms_forms_columns = ['ID', 'Start time', 'Completion time', 'Email', 'Name']; // 'Last modified time' is also a default MS Forms column, but does not always exist
 
   const loadVotingFormDetails = async () => {
     if (!user) {
@@ -205,6 +213,11 @@ export default function AdminUpload() {
     }
   }
 
+  const handleCalculateResults = () => {
+    console.log(votingFormDetails?.columns);
+    console.log(customColumns);
+  }
+
   useEffect(() => {
     loadUserListDetails();
     loadVotingFormDetails();
@@ -213,6 +226,10 @@ export default function AdminUpload() {
   useEffect(() => {
     calculateResultsForm.setFieldValue('checkUserList', !!userListDetails);
   }, [userListDetails]);
+
+  useEffect(() => {
+    customColumnsHandlers.setState(votingFormDetails?.columns.custom || []);
+  }, [votingFormDetails]);
 
   const userListComponent = userListDetails ? (
     <Card mt='md' withBorder>
@@ -287,12 +304,12 @@ export default function AdminUpload() {
           <IconTrash />
         </ActionIcon>
       </Group>
-      {!votingFormDetails.columns.default.includes('Email') &&
+      {!votingFormDetails.columns.default.map((column) => column.name).includes('Email') &&
         <Alert variant="light" color="red" title="No Email column" icon={<IconAlertTriangle />}>
           Email column does not exist, it will not be able to validate against user list, and it is likely this file is not valid export from Microsoft Forms
         </Alert>
       }
-      {!ms_form_columns.every((column) => votingFormDetails.columns.default.includes(column)) &&
+      {!ms_forms_columns.every((ms_forms_column) => votingFormDetails.columns.default.map((column) => column.name).includes(ms_forms_column)) &&
         <Alert variant="light" color="yellow" title="Missing default column" icon={<IconAlertTriangle />} mt='xs'>
           Not all expected default columns ("ID", "Start time", "Completion time", "Email", "Name", "Last modified time") exist, and it is likely this file is not valid export from Microsoft Forms
         </Alert>
@@ -362,11 +379,15 @@ export default function AdminUpload() {
 
   return (
     <>
-      <Title order={1}>Upload voting response and User List</Title>
+      <Title order={1}>Upload voting response and user list</Title>
       {userListComponent}
       {votingFormComponent}
       <Card mt='md' withBorder>
-        <form>
+        <Title order={2}>Calculate Results</Title>
+        <Text size='sm' c='dimmed'>
+          Reloading the page will reset this form
+        </Text>
+        <form onSubmit={calculateResultsForm.onSubmit(() => handleCalculateResults())}>
           <Tooltip
             label="User list not provided"
             events={{ hover: !userListDetails, focus: false, touch: !userListDetails }}
@@ -375,28 +396,58 @@ export default function AdminUpload() {
               label='Check against user list'
               key={calculateResultsForm.key('checkUserList')}
               disabled={!userListDetails}
+              mt='md'
               {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
             />
           </Tooltip>
           {votingFormDetails && (
-            <Card mt='md' withBorder>
-              <Title order={2}>Custom Columns</Title>
-              <InputBase component='div' multiline>
-              <Pill.Group>
-                {votingFormDetails.columns.custom.map((column_name) => (
-                  <Pill key={column_name} size="lg">{column_name}</Pill>
-                ))}
-                </Pill.Group>
-              </InputBase>
-              <Title order={2} mt='md'>Non-voting Columns</Title>
-              <InputBase component='div' multiline>
-              <Pill.Group>
-                {votingFormDetails.columns.default.map((column_name) => (
-                  <Pill key={column_name} size="lg">{column_name}</Pill>
-                ))}
-                </Pill.Group>
-              </InputBase>
-            </Card>
+            <>
+              <Text mt='md'>
+                The App has guessed the type of columns, if anything needs to be adjusted, drag the columns names to the correct box
+              </Text>
+              <Text size='sm' c='dimmed' mt='xs'>
+                There is currently a UI bug makes it hard to rearrange the order of columns within the each box if the the column names showing in multiple rows in the box. You can still move the columns into a different box as needed
+              </Text>
+              <DragDropContext
+                onDragEnd={({ destination, source }) =>
+                  customColumnsHandlers.reorder({ from: source.index, to: destination?.index || 0 })
+                }
+              >
+                <Title order={2}>Custom Columns</Title>
+                <InputBase component='div' multiline>
+                  <Droppable direction='horizontal' droppableId="columns">
+                    {(provided) => (
+                      <Pill.Group {...provided.droppableProps} ref={provided.innerRef}>
+                        {customColumns.map((column, i) => (
+                          <Draggable key={column.index} index={i} draggableId={column.index.toString()}>
+                            {(provided, snapshot) => (
+                              <Pill
+                                key={column.index}
+                                size="lg"
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                ref={provided.innerRef}
+                              >
+                                {column.name}
+                              </Pill>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </Pill.Group>)}
+                  </Droppable>
+
+                </InputBase>
+                <Title order={2} mt='md'>Non-voting Columns</Title>
+                <InputBase component='div' multiline>
+                  <Pill.Group>
+                    {votingFormDetails.columns.default.map((column) => (
+                      <Pill key={column.index} size="lg">{column.name}</Pill>
+                    ))}
+                  </Pill.Group>
+                </InputBase>
+              </DragDropContext>
+            </>
           )}
           <Tooltip
             label="Voting response not provided"
