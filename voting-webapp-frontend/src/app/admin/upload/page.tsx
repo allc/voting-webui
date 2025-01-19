@@ -19,33 +19,40 @@ export default function AdminUpload() {
   }
 
   interface ColumnNameIndex {
-    name: string,
-    index: number,
+    name: string;
+    index: number;
+  }
+
+  interface Columns {
+    default: ColumnNameIndex[];
+    custom: ColumnNameIndex[];
   }
 
   interface VotingFormDetails {
     filename: string;
-    columns: {
-      'default': ColumnNameIndex[],
-      'custom': ColumnNameIndex[],
-    },
+    columns: Columns;
     num_responses: number;
     file_sha256: string;
     uploaded_at: string;
     uploaded_by: string;
   }
 
+  const columnsTypeKeyNames = [
+    { 'key': 'custom', 'name': 'Custom Columns' },
+    { 'key': 'default', 'name': 'Non-voting Columns' },
+  ]
+  const msFormsColumns = ['ID', 'Start time', 'Completion time', 'Email', 'Name']; // 'Last modified time' is also a default MS Forms column, but does not always exist
+
   const [user] = useContext(UserContext);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
-  const [customColumns, customColumnsHandlers] = useListState<ColumnNameIndex>([]);
+  const [columns, setColumns] = useState<Columns>({ 'default': [], 'custom': [] });
   const calculateResultsForm = useForm({
     mode: 'uncontrolled',
     initialValues: {
       'checkUserList': !!userListDetails,
     }
   })
-
 
   const loadUserListDetails = async () => {
     if (!user) {
@@ -128,8 +135,6 @@ export default function AdminUpload() {
       }
     }
   }
-
-  const ms_forms_columns = ['ID', 'Start time', 'Completion time', 'Email', 'Name']; // 'Last modified time' is also a default MS Forms column, but does not always exist
 
   const loadVotingFormDetails = async () => {
     if (!user) {
@@ -214,8 +219,7 @@ export default function AdminUpload() {
   }
 
   const handleCalculateResults = () => {
-    console.log(votingFormDetails?.columns);
-    console.log(customColumns);
+    console.log(columns);
   }
 
   useEffect(() => {
@@ -228,8 +232,18 @@ export default function AdminUpload() {
   }, [userListDetails]);
 
   useEffect(() => {
-    customColumnsHandlers.setState(votingFormDetails?.columns.custom || []);
+    const columnsCopy: Columns = { 'default': [], 'custom': [] };
+    if (votingFormDetails) {
+      columnsTypeKeyNames.forEach((columnsTypeKeyName) => {
+        columnsCopy[columnsTypeKeyName.key as keyof typeof columnsCopy] = [...votingFormDetails.columns[columnsTypeKeyName.key as keyof typeof columns]];
+      });
+    }
+    setColumns(columnsCopy);
   }, [votingFormDetails]);
+
+  useEffect(() => {
+    console.log(columns);
+  }, [columns]);
 
   const userListComponent = userListDetails ? (
     <Card mt='md' withBorder>
@@ -309,7 +323,7 @@ export default function AdminUpload() {
           Email column does not exist, it will not be able to validate against user list, and it is likely this file is not valid export from Microsoft Forms
         </Alert>
       }
-      {!ms_forms_columns.every((ms_forms_column) => votingFormDetails.columns.default.map((column) => column.name).includes(ms_forms_column)) &&
+      {!msFormsColumns.every((msFormsColumn) => votingFormDetails.columns.default.map((column) => column.name).includes(msFormsColumn)) &&
         <Alert variant="light" color="yellow" title="Missing default column" icon={<IconAlertTriangle />} mt='xs'>
           Not all expected default columns ("ID", "Start time", "Completion time", "Email", "Name", "Last modified time") exist, and it is likely this file is not valid export from Microsoft Forms
         </Alert>
@@ -377,86 +391,99 @@ export default function AdminUpload() {
     </Card>
   );
 
+  const calculateResultsFormComponent = (
+    <Card mt='md' withBorder>
+      <Title order={2}>Calculate Results</Title>
+      <Text size='sm' c='dimmed'>
+        Reloading the page will reset this form
+      </Text>
+      <form onSubmit={calculateResultsForm.onSubmit(() => handleCalculateResults())}>
+        <Tooltip
+          label="User list not provided"
+          events={{ hover: !userListDetails, focus: false, touch: !userListDetails }}
+        >
+          <Checkbox
+            label='Check against user list'
+            key={calculateResultsForm.key('checkUserList')}
+            disabled={!userListDetails}
+            mt='md'
+            {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
+          />
+        </Tooltip>
+        {votingFormDetails && (
+          <>
+            <Text mt='md'>
+              The App has guessed the type of columns, if anything needs to be adjusted, drag the columns names to the correct box
+            </Text>
+            <Text size='sm' c='dimmed' mt='xs'>
+              There is currently a UI bug makes it hard to rearrange the order of columns within the each box if the the column names showing in multiple rows in the box. You can still move the columns into a different box as needed. However, you can use a keyboard to move columns around smoothly. use (tab-)shift key to navigate columns, space bar to lift and place a column, arrow keys to move a column
+            </Text>
+            <DragDropContext
+              onDragEnd={({ destination, source }) => {
+                if (!destination) {
+                  return;
+                }
+                if (destination.droppableId == source.droppableId && destination.index == source.index) {
+                  return;
+                }
+                const start = columns[source.droppableId as keyof typeof columns];
+                const finish = columns[destination.droppableId as keyof typeof columns];
+                const moved = start.splice(source.index, 1)[0]; // remove the element
+                finish.splice(destination.index, 0, moved); // (remove 0 elements at the destination index, and) insert the removed element at new index
+                const newColumns = { ...columns };
+                setColumns(newColumns);
+              }}
+            >
+              {columnsTypeKeyNames.map((columnsTypeKeyName) => (
+                <div key={columnsTypeKeyName.key}>
+                  <Title order={2}>{columnsTypeKeyName.name}</Title>
+                  <InputBase component='div' multiline>
+                    <Droppable direction='horizontal' droppableId={columnsTypeKeyName.key}>
+                      {(provided) => (
+                        <Pill.Group 
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                        >
+                          {columns[columnsTypeKeyName.key as keyof typeof columns].map((column, i) => (
+                            <Draggable key={column.index} index={i} draggableId={column.index.toString()}>
+                              {(provided) => (
+                                <Pill
+                                  key={column.index}
+                                  size="lg"
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  ref={provided.innerRef}
+                                >
+                                  {column.name}
+                                </Pill>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </Pill.Group>)}
+                    </Droppable>
+                  </InputBase>
+                </div>
+              ))}
+            </DragDropContext>
+          </>
+        )}
+        <Tooltip
+          label="Voting response not provided"
+          events={{ hover: !votingFormDetails, focus: false, touch: !votingFormDetails }}
+        >
+          <Button type='submit' mt='md' disabled={!votingFormDetails}>Calculate Results</Button>
+        </Tooltip>
+      </form>
+    </Card>
+  )
+
   return (
     <>
       <Title order={1}>Upload voting response and user list</Title>
       {userListComponent}
       {votingFormComponent}
-      <Card mt='md' withBorder>
-        <Title order={2}>Calculate Results</Title>
-        <Text size='sm' c='dimmed'>
-          Reloading the page will reset this form
-        </Text>
-        <form onSubmit={calculateResultsForm.onSubmit(() => handleCalculateResults())}>
-          <Tooltip
-            label="User list not provided"
-            events={{ hover: !userListDetails, focus: false, touch: !userListDetails }}
-          >
-            <Checkbox
-              label='Check against user list'
-              key={calculateResultsForm.key('checkUserList')}
-              disabled={!userListDetails}
-              mt='md'
-              {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
-            />
-          </Tooltip>
-          {votingFormDetails && (
-            <>
-              <Text mt='md'>
-                The App has guessed the type of columns, if anything needs to be adjusted, drag the columns names to the correct box
-              </Text>
-              <Text size='sm' c='dimmed' mt='xs'>
-                There is currently a UI bug makes it hard to rearrange the order of columns within the each box if the the column names showing in multiple rows in the box. You can still move the columns into a different box as needed
-              </Text>
-              <DragDropContext
-                onDragEnd={({ destination, source }) =>
-                  customColumnsHandlers.reorder({ from: source.index, to: destination?.index || 0 })
-                }
-              >
-                <Title order={2}>Custom Columns</Title>
-                <InputBase component='div' multiline>
-                  <Droppable direction='horizontal' droppableId="columns">
-                    {(provided) => (
-                      <Pill.Group {...provided.droppableProps} ref={provided.innerRef}>
-                        {customColumns.map((column, i) => (
-                          <Draggable key={column.index} index={i} draggableId={column.index.toString()}>
-                            {(provided, snapshot) => (
-                              <Pill
-                                key={column.index}
-                                size="lg"
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                ref={provided.innerRef}
-                              >
-                                {column.name}
-                              </Pill>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </Pill.Group>)}
-                  </Droppable>
-
-                </InputBase>
-                <Title order={2} mt='md'>Non-voting Columns</Title>
-                <InputBase component='div' multiline>
-                  <Pill.Group>
-                    {votingFormDetails.columns.default.map((column) => (
-                      <Pill key={column.index} size="lg">{column.name}</Pill>
-                    ))}
-                  </Pill.Group>
-                </InputBase>
-              </DragDropContext>
-            </>
-          )}
-          <Tooltip
-            label="Voting response not provided"
-            events={{ hover: !votingFormDetails, focus: false, touch: !votingFormDetails }}
-          >
-            <Button type='submit' mt='md' disabled={!votingFormDetails}>Calculate Results</Button>
-          </Tooltip>
-        </form>
-      </Card>
+      {calculateResultsFormComponent}
     </>
   )
 }
