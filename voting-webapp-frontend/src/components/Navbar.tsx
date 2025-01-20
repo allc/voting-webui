@@ -96,7 +96,7 @@ const NavBar = () => {
                 <Menu.Target>
                   <UnstyledButton>
                     <Group>
-                      <Image mah={24} maw={24} src={user.picture}></Image>
+                      <Image mah={24} maw={24} src={user.picture} alt='User profile picture'></Image>
                       <Text>{user.name}</Text>
                     </Group>
                   </UnstyledButton>

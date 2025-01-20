@@ -1,6 +1,4 @@
-import { Website } from "./Website";
-
-interface User {
+export interface User {
   sub: number;
   name: string;
   picture: string;

@@ -1,0 +1,25 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      - FRONTEND_URL=${FRONTEND_URL}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - AUTHORIZED_EMAILS=${AUTHORIZED_EMAILS}
+      - AUTHORIZED_HDS=${AUTHORIZED_HDS}
+      - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
+    volumes:
+      - ./data:/code/data
+
+  frontend:
+    build:
+      context: ./voting-webapp-frontend
+      args:
+        - NEXT_PUBLIC_API_SERVER=${API_SERVER}
+    ports:
+      - ${IP_PORT}:80
+    environment:
+      - NODE_ENV=production
+    depends_on:
+      - backend

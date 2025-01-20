@@ -2,11 +2,11 @@
 
 import { UserContext } from "@/app/UserProvider";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
-import { Accordion, ActionIcon, Alert, Badge, Button, Card, Checkbox, Drawer, FileInput, Group, InputBase, Modal, Pill, Spoiler, Table, Text, Title, Tooltip } from "@mantine/core";
+import { ActionIcon, Alert, Button, Card, Checkbox, Drawer, Group, InputBase, Pill, Table, Text, Title, Tooltip } from "@mantine/core";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
 import { useForm } from "@mantine/form";
-import { useDisclosure, useListState } from "@mantine/hooks";
-import { IconAlertTriangle, IconFileSpreadsheet, IconFileTypeTxt, IconFileTypeXls, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
+import { IconAlertTriangle, IconFileSpreadsheet, IconFileTypeTxt, IconTrash, IconUpload, IconX } from "@tabler/icons-react";
 import { useContext, useEffect, useState } from "react";
 
 export default function AdminUpload() {
@@ -270,15 +270,15 @@ export default function AdminUpload() {
   useEffect(() => {
     loadUserListDetails();
     loadVotingFormDetails();
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     calculateResultsForm.setFieldValue('checkUserList', !!userListDetails);
-  }, [userListDetails]);
+  }, [userListDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     resetColumns();
-  }, [votingFormDetails]);
+  }, [votingFormDetails]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const userListComponent = userListDetails ? (
     <Card mt='md' withBorder>
@@ -360,7 +360,7 @@ export default function AdminUpload() {
       }
       {!msFormsColumns.every((msFormsColumn) => votingFormDetails.columns.default.map((column) => column.name).includes(msFormsColumn)) &&
         <Alert variant="light" color="yellow" title="Missing default column" icon={<IconAlertTriangle />} mt='xs'>
-          Not all expected default columns ("ID", "Start time", "Completion time", "Email", "Name", "Last modified time") exist, and it is likely this file is not valid export from Microsoft Forms
+          Not all expected default columns (&quot;ID&quot;, &quot;Start time&quot;, &quot;Completion time&quot;, &quot;Email&quot;, &quot;Name&quot;, &quot;Last modified time&quot;) exist, and it is likely this file is not valid export from Microsoft Forms
         </Alert>
       }
       <Table variant="vertical">

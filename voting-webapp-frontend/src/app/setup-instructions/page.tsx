@@ -1,6 +1,6 @@
 'use client';
 
-import { Alert, Text, Title } from "@mantine/core";
+import { Alert, Title } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 
 export default function SetupInstructions() {

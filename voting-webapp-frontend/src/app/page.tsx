@@ -3,7 +3,7 @@
 import { Button, Title } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
-import { use, useContext, useEffect } from "react";
+import { useContext, useEffect } from "react";
 import { UserContext } from "./UserProvider";
 
 export default function Home() {
@@ -35,7 +35,7 @@ export default function Home() {
     if (user) {
       router.push('/admin');
     }
-  }, [user]);
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>

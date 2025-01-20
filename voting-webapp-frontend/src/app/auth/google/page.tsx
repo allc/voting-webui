@@ -3,9 +3,9 @@
 import { UserContext } from "@/app/UserProvider";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { useContext, useEffect } from "react";
+import { Suspense, useContext, useEffect } from "react";
 
-export default function GoogleAuthCallback() {
+function GoogleAuthCallback() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [, auth] = useContext(UserContext);
@@ -53,11 +53,19 @@ export default function GoogleAuthCallback() {
       alert('Invalid state');
       router.push('/');
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <>
       <p>Please wait...</p>
     </>
   )
+}
+
+export default function GoogleAuthCallbackWrapper() {
+  return (
+    <Suspense>
+      <GoogleAuthCallback />
+    </Suspense>
+  );
 }
