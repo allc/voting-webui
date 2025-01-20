@@ -2,6 +2,9 @@
 
 ## Development
 
+1. Copy `.env.prod` to `.env` and fill in the required values
+2. Run `docker-compose up`
+
 ### Run backend
 
 1. Go to `backend` folder

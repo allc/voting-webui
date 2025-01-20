@@ -40,8 +40,8 @@ export default function AdminUpload() {
 
   const columnsTypeKeyNames = [
     { 'key': 'ranking', 'name': 'Ranking Columns' },
-    { 'key': 'default', 'name': 'Non-voting Columns' },
     { 'key': 'choice_single_answer', 'name': 'Choice (Single Answer) Columns' },
+    { 'key': 'default', 'name': 'Non-voting Columns' },
   ]
   const msFormsColumns = ['ID', 'Start time', 'Completion time', 'Email', 'Name']; // 'Last modified time' is also a default MS Forms column, but does not always exist
 
