@@ -41,11 +41,20 @@ class TokenData(BaseModel):
     name: str
     picture: str
 
+class Column(BaseModel):
+    name: str
+    index: int
+
+class Columns(BaseModel):
+    ranking: list[Column]
+    choice_single_answer: list[Column]
+    default: list[Column]
+
 class CalculateResultsRequest(BaseModel):
     user_list_hash: str | None = None
     voting_form_hash: str
     check_user_list: bool = False
-    columns: dict[str, list[dict]]
+    columns: Columns
 
 class UserListDetails(BaseModel):
     filename: str | None
@@ -57,7 +66,7 @@ class UserListDetails(BaseModel):
 class VotingFormDetails(BaseModel):
     filename: str | None
     file_sha256: str
-    columns: dict[str, list[dict]]
+    columns: Columns
     num_responses: int
     uploaded_at: str
     uploaded_by: str
@@ -291,7 +300,7 @@ def calculate_results(data: CalculateResultsRequest):
     user_list = None
     if data.check_user_list:
         if not os.path.exists('data/user_list.txt') or not os.path.exists('data/user_list_details.json'):
-            warnings.append('User list not found')
+            warnings.append('User list not found, skipping user list check')
         else:
             with open('data/user_list.txt', 'r') as f:
                 user_list = [line.strip() for line in f if line.strip()]
@@ -300,18 +309,28 @@ def calculate_results(data: CalculateResultsRequest):
             if user_list_details.file_sha256 != data.user_list_hash:
                 warnings.append('User list hash does not match')
 
-    ranking_column_indices = [col['index'] for col in data.columns.get('ranking', [])]
-    choice_single_answer_column_indices = [col['index'] for col in data.columns.get('choice_single_answer', [])]
-    
+
+
+    ranking_column_indices = [col.index for col in data.columns.ranking]
+    choice_single_answer_column_indices = [col.index for col in data.columns.choice_single_answer]
+
     for col_i in ranking_column_indices:
         result = calculate_ranking_results(voting_form, col_i)
     
     with open('data/results.json', 'w') as f:
         results = {
-            'voting_form_name': voting_form_details.filename,
-            'voting_form_hash': voting_form_details.file_sha256,
-            'voting_form_uploaded_by': voting_form_details.uploaded_by,
-            'voting_form_uploaded_at': voting_form_details.uploaded_at,
+            'voting_form': {
+                'filename': voting_form_details.filename,
+                'file_sha256': voting_form_details.file_sha256,
+                'uploaded_at': voting_form_details.uploaded_at,
+                'uploaded_by': voting_form_details.uploaded_by,
+            },
+            'user_list': {
+                'filename': user_list_details.filename,
+                'file_sha256': user_list_details.file_sha256,
+                'uploaded_at': user_list_details.uploaded_at,
+                'uploaded_by': user_list_details.uploaded_by,
+            } if user_list else None,
         }
         f.write(json.dumps(results, indent=2) + '\n')
 
