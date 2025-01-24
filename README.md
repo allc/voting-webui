@@ -8,10 +8,11 @@
 ### Run backend
 
 1. Go to `backend` folder
-2. Create and activate a Python virtual environment
+2. Create and activate a Python virtual environment (Python 3.10 or later)
 3. Run `pip install -r requirements.txt`
 4. Copy `.env.example` to `.env` and fill in the required values
-5. Run `fastapi dev main.py`
+5. Create `data` folder
+6. Run `fastapi dev main.py`
 
 ### Run frontend
 

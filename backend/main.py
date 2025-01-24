@@ -14,6 +14,7 @@ import json
 import os
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from .ms_form_calculate import calculate_ranking_results
 from .config import settings
 
 bearer_scheme = HTTPBearer()
@@ -32,23 +33,6 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-@app.get("/api/auth/google")
-def google_auth():
-    # https://developers.google.com/identity/protocols/oauth2/web-server#httprest
-    client_id = settings.google_client_id
-    state = secrets.token_urlsafe(16)
-    parameters = {
-        'client_id': client_id,
-        'redirect_uri': f'{settings.frontend_url}/auth/google',
-        'response_type': 'code',
-        'scope': 'openid profile email',
-        'state': state,
-    }
-    return {
-        'url': f'https://accounts.google.com/o/oauth2/v2/auth?{parse.urlencode(parameters)}',
-        'state': state
-    }
-
 class GoogleAuthCallback(BaseModel):
     code: str
 
@@ -56,6 +40,27 @@ class TokenData(BaseModel):
     sub: str
     name: str
     picture: str
+
+class CalculateResultsRequest(BaseModel):
+    user_list_hash: str | None = None
+    voting_form_hash: str
+    check_user_list: bool = False
+    columns: dict[str, list[dict]]
+
+class UserListDetails(BaseModel):
+    filename: str | None
+    file_sha256: str
+    num_users: int
+    uploaded_at: str
+    uploaded_by: str
+
+class VotingFormDetails(BaseModel):
+    filename: str | None
+    file_sha256: str
+    columns: dict[str, list[dict]]
+    num_responses: int
+    uploaded_at: str
+    uploaded_by: str
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -115,6 +120,23 @@ def get_column_types(ws: Worksheet):
         else:
             columns['choice_single_answer'].append({'name': col_name, 'index': col_i})
     return columns
+
+@app.get("/api/auth/google")
+def google_auth():
+    # https://developers.google.com/identity/protocols/oauth2/web-server#httprest
+    client_id = settings.google_client_id
+    state = secrets.token_urlsafe(16)
+    parameters = {
+        'client_id': client_id,
+        'redirect_uri': f'{settings.frontend_url}/auth/google',
+        'response_type': 'code',
+        'scope': 'openid profile email',
+        'state': state,
+    }
+    return {
+        'url': f'https://accounts.google.com/o/oauth2/v2/auth?{parse.urlencode(parameters)}',
+        'state': state
+    }
 
 @app.post("/api/auth/google")
 def google_auth_callback(data: GoogleAuthCallback):
@@ -176,15 +198,15 @@ def upload_user_list(
         raise HTTPException(status_code=400, detail='File does not seem to be a text file or contains non-Unicode characters')
     with open('data/user_list.txt', 'rb') as f:
         file_hash = hashlib.sha256(f.read()).hexdigest()
-    details = {
-        'filename': file.filename,
-        'num_users': num_lines, # does not check duplicates
-        'file_sha256': file_hash,
-        'uploaded_at': datetime.now(timezone.utc).isoformat(),
-        'uploaded_by': current_user.sub,
-    }
+    details = UserListDetails(
+        filename=file.filename,
+        num_users=num_lines, # does not check duplicates
+        file_sha256=file_hash,
+        uploaded_at=datetime.now(timezone.utc).isoformat(),
+        uploaded_by=current_user.sub,
+    )
     with open('data/user_list_details.json', 'w') as f:
-        f.write(json.dumps(details, indent=2) + '\n')
+        f.write(details.model_dump_json(indent=2) + '\n')
     return {'message': 'File uploaded'}
 
 @app.get('/api/admin/user-list')
@@ -192,7 +214,7 @@ def get_user_list_details():
     if not os.path.exists('data/user_list_details.json'):
         raise HTTPException(status_code=404, detail='User list not found')
     with open('data/user_list_details.json', 'r') as f:
-        details = json.load(f)
+        details = UserListDetails.model_validate(json.load(f))
     return details
 
 @app.delete('/api/admin/user-list')
@@ -219,16 +241,16 @@ def upload_voting_form(
         raise HTTPException(status_code=400, detail='Error occurred, maybe file is not a valid .xlsx file')
     columns = get_column_types(ws)
     num_responses = get_spreadsheet_num_rows(ws) - 1
-    details = {
-        'filename': file.filename,
-        'file_sha256': file_hash,
-        'columns': columns,
-        'num_responses': num_responses,
-        'uploaded_at': datetime.now(timezone.utc).isoformat(),
-        'uploaded_by': current_user.sub,
-    }
+    details = VotingFormDetails(
+        filename=file.filename,
+        file_sha256=file_hash,
+        columns=columns,
+        num_responses=num_responses,
+        uploaded_at=datetime.now(timezone.utc).isoformat(),
+        uploaded_by=current_user.sub,
+    )
     with open('data/voting_form_details.json', 'w') as f:
-        f.write(json.dumps(details, indent=2) + '\n')
+        f.write(details.model_dump_json(indent=2) + '\n')
     return {'message': 'File uploaded'}
 
 @app.get('/api/admin/voting-form')
@@ -236,7 +258,7 @@ def get_voting_form_details():
     if not os.path.exists('data/voting_form_details.json'):
         raise HTTPException(status_code=404, detail='Voting form not found')
     with open('data/voting_form_details.json', 'r') as f:
-        details = json.load(f)
+        details = VotingFormDetails.model_validate(json.load(f))
     return details
 
 @app.delete('/api/admin/voting-form')
@@ -246,3 +268,54 @@ def delete_voting_form():
     if os.path.exists('data/voting_form.xlsx'):
         os.remove('data/voting_form.xlsx')
     return {'message': 'Voting form deleted'}
+
+@app.post('/api/admin/calculate-results')
+def calculate_results(data: CalculateResultsRequest):
+    warnings = []
+
+    # check voting response exists
+    if not os.path.exists('data/voting_form.xlsx') or not os.path.exists('data/voting_form_details.json'):
+        raise HTTPException(status_code=404, detail='Voting form not found')
+    
+    # load voting response and check hash
+    try:
+        voting_form = get_spreadsheet_worksheet('data/voting_form.xlsx')
+    except:
+        raise HTTPException(status_code=400, detail='Error occurred, could not open voting response file')
+    with open('data/voting_form_details.json', 'r') as f:
+        voting_form_details = VotingFormDetails.model_validate(json.load(f))
+    if voting_form_details.file_sha256 != data.voting_form_hash:
+        warnings.append('Voting form hash does not match')
+
+    # load user list if needed
+    user_list = None
+    if data.check_user_list:
+        if not os.path.exists('data/user_list.txt') or not os.path.exists('data/user_list_details.json'):
+            warnings.append('User list not found')
+        else:
+            with open('data/user_list.txt', 'r') as f:
+                user_list = [line.strip() for line in f if line.strip()]
+            with open('data/user_list_details.json', 'r') as f:
+                user_list_details = UserListDetails.model_validate(json.load(f))
+            if user_list_details.file_sha256 != data.user_list_hash:
+                warnings.append('User list hash does not match')
+
+    ranking_column_indices = [col['index'] for col in data.columns.get('ranking', [])]
+    choice_single_answer_column_indices = [col['index'] for col in data.columns.get('choice_single_answer', [])]
+    
+    for col_i in ranking_column_indices:
+        result = calculate_ranking_results(voting_form, col_i)
+    
+    with open('data/results.json', 'w') as f:
+        results = {
+            'voting_form_name': voting_form_details.filename,
+            'voting_form_hash': voting_form_details.file_sha256,
+            'voting_form_uploaded_by': voting_form_details.uploaded_by,
+            'voting_form_uploaded_at': voting_form_details.uploaded_at,
+        }
+        f.write(json.dumps(results, indent=2) + '\n')
+
+    return {
+        'results': results,
+        'warnings': warnings,
+    }
