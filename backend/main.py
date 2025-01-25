@@ -15,6 +15,7 @@ import os
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from email_validator import validate_email
+import networkx as nx
 from .ms_form_calculate import calculate_ranking_result
 from .config import settings
 
@@ -345,6 +346,8 @@ def calculate_results(data: CalculateResultsRequest):
     for col_i in ranking_column_indices:
         errors = []
         warnings = []
+        num_votes = 0
+        num_abstain = 0
         num_invalid = 0
 
         column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
@@ -357,24 +360,42 @@ def calculate_results(data: CalculateResultsRequest):
                 num_invalid += 1
                 warnings.append(f'Row {row_number} is not string, invalid and ignored')
 
-        result_ = calculate_ranking_result(column_responses_)
+        result_, warnings_, errors_ = calculate_ranking_result(column_responses_)
+        warnings += warnings_
+        errors += errors_
+
+        if not result_:
+            num_invalid = 0
+            winners = None
+            pairs = None
+            lock_graph = None
+        else:
+            winners, pairs, lock_graph, num_votes_, num_abstain_, num_invalid_ = result_
+            num_votes += num_votes_
+            num_abstain += num_abstain_
+            num_invalid += num_invalid_
+            pairs = [pair.model_dump() for pair in pairs]
+            lock_graph = nx.node_link_data(lock_graph, edges='edges') # type: ignore
 
         result = {
             'column_name': voting_form.cell(row=1, column=col_i).value,
-            'result': result_,
+            'winners': winners,
+            'pairs': pairs,
+            'lock_graph': lock_graph,
+            'num_votes': num_votes,
+            'num_abstain': num_abstain,
             'num_invalid': num_invalid,
             'errors': errors,
             'warnings': warnings,
         }
-        print(result)
+        ranking_column_results.append(result)
 
     choice_column_results = []
     for col_i in choice_single_answer_column_indices:
         column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
-        print(column_responses)
+        # print(column_responses)
     
-    with open('data/results.json', 'w') as f:
-        results = {
+    results = {
             'voting_form': {
                 'filename': voting_form_details.filename,
                 'file_sha256': voting_form_details.file_sha256,
@@ -389,7 +410,10 @@ def calculate_results(data: CalculateResultsRequest):
             } if user_list else None,
             'num_responses': voting_form_details.num_responses,
             'num_valid_responses': len(responses),
+            'rank_column_results': ranking_column_results,
         }
+
+    with open('data/results.json', 'w') as f:
         f.write(json.dumps(results, indent=2) + '\n')
 
     return {
