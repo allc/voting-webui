@@ -69,7 +69,7 @@ const NavBar = () => {
               isActive={pathname === link.href}
             />
           ))}
-          {user &&
+          {user ?
             <>
               <Menu trigger='click-hover' openDelay={100} closeDelay={400}>
                 <Menu.Target>
@@ -115,7 +115,9 @@ const NavBar = () => {
                 </Menu.Dropdown>
               </Menu>
             </>
-          }
+          : <>
+            <UnstyledButton component='a' href='/'>Login</UnstyledButton>
+          </>}
         </div>
       </div>
     </nav>

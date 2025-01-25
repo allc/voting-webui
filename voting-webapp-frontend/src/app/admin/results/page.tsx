@@ -19,16 +19,24 @@ export default function Results() {
     if (!user) {
       return;
     }
-    const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/results`, {
-      headers: {
-        'Authorization': `Bearer ${user.accessToken}`,
-      },
-    });
-    if (!result.ok) {
-      return;
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/results`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        return;
+      }
+      const data = await result.json();
+      setVotingResults(data);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
     }
-    const data = await result.json();
-    setVotingResults(data);
   }
 
   const showAll = () => {

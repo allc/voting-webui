@@ -7,7 +7,7 @@ import { useEffect } from "react";
 export default function Admin() {
   const router = useRouter();
   useEffect(() => {
-    router.push('/admin/upload');
+    router.push('/admin/results');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

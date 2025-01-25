@@ -474,3 +474,7 @@ def delete_results(current_user: Annotated[User, Depends(get_current_user)]):
     if os.path.exists('data/results.json'):
         os.remove('data/results.json')
     return {'message': 'Results deleted'}
+
+@app.get('/api/admin/user-email-domains')
+def get_user_email_domains(current_user: Annotated[User, Depends(get_current_user)]):
+    return settings.user_email_domains

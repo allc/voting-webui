@@ -25,6 +25,7 @@ export default function AdminUpload() {
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
   const [votingResults, setVotingResults] = useState<VotingResults | null>(null);
   const [columns, setColumns] = useState<Columns>({ 'default': [], 'ranking': [], 'choice_single_answer': [] });
+  const [allowedUserEmailDomain, setAllowedUserEmailDomain] = useState<string[] | null>(null);
   const [drawerOpened, drawerOpenClose] = useDisclosure(false);
   const calculateResultsForm = useForm({
     mode: 'uncontrolled',
@@ -237,6 +238,7 @@ export default function AdminUpload() {
         }),
       });
       loadResults();
+      drawerOpenClose.close();
       if (!result.ok) {
         const json = await result.json();
         throw new Error(json.detail);
@@ -264,16 +266,24 @@ export default function AdminUpload() {
     if (!user) {
       return;
     }
-    const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/results`, {
-      headers: {
-        'Authorization': `Bearer ${user.accessToken}`,
-      },
-    });
-    if (!result.ok) {
-      return;
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/results`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        return;
+      }
+      const data = await result.json();
+      setVotingResults(data);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
     }
-    const data = await result.json();
-    setVotingResults(data);
   }
 
   const handleDeleteResults = async () => {
@@ -304,10 +314,35 @@ export default function AdminUpload() {
     }
   }
 
+  const loadAllowedUserEmailDomains = async () => {
+    if (!user) {
+      return;
+    }
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/user-email-domains`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        return;
+      }
+      const data = await result.json();
+      setAllowedUserEmailDomain(data);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
   useEffect(() => {
     loadUserListDetails();
     loadVotingFormDetails();
     loadResults();
+    loadAllowedUserEmailDomains();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -478,6 +513,9 @@ export default function AdminUpload() {
             {...calculateResultsForm.getInputProps('checkUserList', { type: 'checkbox' })}
           />
         </Tooltip>
+        {allowedUserEmailDomain && (
+          <Text>Allowed user email domains: {allowedUserEmailDomain.join(', ')}</Text>
+        )}
         {votingFormDetails && (
           <>
             <Text mt='md'>
