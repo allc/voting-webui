@@ -1,8 +1,7 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
-import { Accordion, ActionIcon, Anchor, Button, Card, Group, Table, Text, Title } from "@mantine/core";
-import { useRouter } from "next/navigation";
+import { Accordion, Anchor, Button, Card, Group, Table, Text, Title } from "@mantine/core";
 import { useContext, useEffect, useState } from "react";
 
 export default function Admin() {
