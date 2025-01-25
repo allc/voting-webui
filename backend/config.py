@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     access_token_secret: str = ''
     access_token_expire_minutes: int = 60 * 24 * 7 # 7 days
 
+    user_email_domains: list[str] = []
+
     model_config = SettingsConfigDict(env_file='.env', extra='ignore')
 
 settings = Settings()

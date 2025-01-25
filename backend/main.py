@@ -14,6 +14,7 @@ import json
 import os
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
+from email_validator import validate_email
 from .ms_form_calculate import calculate_ranking_results
 from .config import settings
 
@@ -70,6 +71,10 @@ class VotingFormDetails(BaseModel):
     num_responses: int
     uploaded_at: str
     uploaded_by: str
+
+class Row(BaseModel):
+    row_number: int
+    row: tuple[str | int | float | datetime | None, ...]
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
@@ -129,6 +134,17 @@ def get_column_types(ws: Worksheet):
         else:
             columns['choice_single_answer'].append({'name': col_name, 'index': col_i})
     return columns
+
+def check_user_email_in_list(email: str, user_list: list[str]):
+    try:
+        emailinfo = validate_email(email, check_deliverability=False)
+        if emailinfo.local_part.lower() not in user_list:
+            return False
+        if settings.user_email_domains and emailinfo.domain not in [d.lower() for d in settings.user_email_domains]:
+            return False
+        return True
+    except:
+        return email.lower() in user_list
 
 @app.get("/api/auth/google")
 def google_auth():
@@ -253,7 +269,7 @@ def upload_voting_form(
     details = VotingFormDetails(
         filename=file.filename,
         file_sha256=file_hash,
-        columns=columns,
+        columns=Columns(**columns),
         num_responses=num_responses,
         uploaded_at=datetime.now(timezone.utc).isoformat(),
         uploaded_by=current_user.sub,
@@ -303,13 +319,24 @@ def calculate_results(data: CalculateResultsRequest):
             warnings.append('User list not found, skipping user list check')
         else:
             with open('data/user_list.txt', 'r') as f:
-                user_list = [line.strip() for line in f if line.strip()]
+                user_list = [line.strip().lower() for line in f if line.strip()]
             with open('data/user_list_details.json', 'r') as f:
                 user_list_details = UserListDetails.model_validate(json.load(f))
             if user_list_details.file_sha256 != data.user_list_hash:
                 warnings.append('User list hash does not match')
 
-
+    responses = [Row(row_number=i, row=row) for i, row in enumerate(voting_form.iter_rows(values_only=True, min_row=2), start=2)]
+    if user_list:
+        email_col_i = None
+        for col_i in range(1, voting_form.max_column + 1):
+            col_name = voting_form.cell(row=1, column=col_i).value
+            if col_name == 'Email':
+                email_col_i = col_i
+                break
+        if email_col_i is None:
+            warnings.append('Email column not found in voting form, skipping user list check')
+        else:
+            responses = [row for row in responses if isinstance(row.row[email_col_i - 1], str) and check_user_email_in_list(str(row.row[email_col_i - 1]), user_list)]
 
     ranking_column_indices = [col.index for col in data.columns.ranking]
     choice_single_answer_column_indices = [col.index for col in data.columns.choice_single_answer]
@@ -331,6 +358,8 @@ def calculate_results(data: CalculateResultsRequest):
                 'uploaded_at': user_list_details.uploaded_at,
                 'uploaded_by': user_list_details.uploaded_by,
             } if user_list else None,
+            'num_responses': voting_form_details.num_responses,
+            'num_valid_responses': len(responses),
         }
         f.write(json.dumps(results, indent=2) + '\n')
 
