@@ -243,7 +243,9 @@ export default function AdminUpload() {
       if (!result.ok) {
         throw new Error(json.detail);
       } else {
-        alert(json.warnings.join('\n'));
+        if (json.warnings.length > 0) {
+          alert('Warning:\n' + json.warnings.join('\n'));
+        }
       }
     } catch (e: unknown) {
       if (e instanceof Error) {
