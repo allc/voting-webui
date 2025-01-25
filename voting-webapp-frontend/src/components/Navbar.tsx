@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { Group, Image, Menu, Text, UnstyledButton } from '@mantine/core'
 import { useContext, useEffect, useState } from 'react'
 import { UserContext } from '@/app/UserProvider'
-import { IconFileInfo, IconHammer, IconLogout, IconUpload } from '@tabler/icons-react'
+import { IconFileInfo, IconHammer, IconLogout, IconReportAnalytics, IconUpload } from '@tabler/icons-react'
 
 const Title = () => (
   <Link href='/'>
@@ -84,6 +84,9 @@ const NavBar = () => {
                 <Menu.Dropdown>
                   <Menu.Item leftSection={<IconUpload></IconUpload>} component='a' href='/admin/upload'>
                     Upload Voting Forms and User List
+                  </Menu.Item>
+                  <Menu.Item leftSection={<IconReportAnalytics></IconReportAnalytics>} component='a' href='/admin/results'>
+                    View Results
                   </Menu.Item>
                   <Menu.Divider />
                   <Menu.Item leftSection={<IconFileInfo></IconFileInfo>} component='a' href='/setup-instructions'>

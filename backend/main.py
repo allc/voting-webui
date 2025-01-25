@@ -77,6 +77,19 @@ class Row(BaseModel):
     row_number: int
     row: tuple[str | int | float | datetime | None, ...]
 
+class User(BaseModel):
+    sub: str
+    name: str
+    picture: str
+
+def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)]):
+    try:
+        payload = jwt.decode(token.credentials, settings.access_token_secret, algorithms=['HS256'])
+        token_data = TokenData.model_validate(payload)
+    except:
+        raise HTTPException(status_code=401, detail='Could not validate credentials')
+    return User(**token_data.model_dump())
+
 def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode = data.copy()
     if expires_delta:
@@ -193,19 +206,6 @@ def google_auth_callback(data: GoogleAuthCallback):
     access_token = create_access_token(token_data.model_dump())
     return {'access_token': access_token}
 
-class User(BaseModel):
-    sub: str
-    name: str
-    picture: str
-
-def get_current_user(token: Annotated[HTTPAuthorizationCredentials, Depends(bearer_scheme)]):
-    try:
-        payload = jwt.decode(token.credentials, settings.access_token_secret, algorithms=['HS256'])
-        token_data = TokenData.model_validate(payload)
-    except:
-        raise HTTPException(status_code=401, detail='Could not validate credentials')
-    return User(**token_data.model_dump())
-
 @app.get('/api/auth/profile')
 def profile(current_user: Annotated[User, Depends(get_current_user)]):
     return current_user
@@ -236,7 +236,7 @@ def upload_user_list(
     return {'message': 'File uploaded'}
 
 @app.get('/api/admin/user-list')
-def get_user_list_details():
+def get_user_list_details(current_user: Annotated[User, Depends(get_current_user)]):
     if not os.path.exists('data/user_list_details.json'):
         raise HTTPException(status_code=404, detail='User list not found')
     with open('data/user_list_details.json', 'r') as f:
@@ -244,7 +244,7 @@ def get_user_list_details():
     return details
 
 @app.delete('/api/admin/user-list')
-def delete_user_list():
+def delete_user_list(current_user: Annotated[User, Depends(get_current_user)]):
     if os.path.exists('data/user_list_details.json'):
         os.remove('data/user_list_details.json')
     if os.path.exists('data/user_list.txt'):
@@ -280,7 +280,7 @@ def upload_voting_form(
     return {'message': 'File uploaded'}
 
 @app.get('/api/admin/voting-form')
-def get_voting_form_details():
+def get_voting_form_details(current_user: Annotated[User, Depends(get_current_user)]):
     if not os.path.exists('data/voting_form_details.json'):
         raise HTTPException(status_code=404, detail='Voting form not found')
     with open('data/voting_form_details.json', 'r') as f:
@@ -288,7 +288,7 @@ def get_voting_form_details():
     return details
 
 @app.delete('/api/admin/voting-form')
-def delete_voting_form():
+def delete_voting_form(current_user: Annotated[User, Depends(get_current_user)]):
     if os.path.exists('data/voting_form_details.json'):
         os.remove('data/voting_form_details.json')
     if os.path.exists('data/voting_form.xlsx'):
@@ -296,7 +296,10 @@ def delete_voting_form():
     return {'message': 'Voting form deleted'}
 
 @app.post('/api/admin/calculate-results')
-def calculate_results(data: CalculateResultsRequest):
+def calculate_results(
+    data: CalculateResultsRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
     warnings = []
 
     # check voting response exists
@@ -345,7 +348,7 @@ def calculate_results(data: CalculateResultsRequest):
     ranking_column_results = []
     for col_i in ranking_column_indices:
         errors = []
-        warnings = []
+        column_warnings = []
         num_votes = 0
         num_abstain = 0
         num_invalid = 0
@@ -358,10 +361,10 @@ def calculate_results(data: CalculateResultsRequest):
                 column_responses_.append((row_number, value))
             else:
                 num_invalid += 1
-                warnings.append(f'Row {row_number} is not string, invalid and ignored')
+                column_warnings.append(f'Row {row_number} is not string, invalid and ignored')
 
         result_, warnings_, errors_ = calculate_ranking_result(column_responses_)
-        warnings += warnings_
+        column_warnings += warnings_
         errors += errors_
 
         if not result_:
@@ -386,14 +389,13 @@ def calculate_results(data: CalculateResultsRequest):
             'num_abstain': num_abstain,
             'num_invalid': num_invalid,
             'errors': errors,
-            'warnings': warnings,
+            'warnings': column_warnings,
         }
         ranking_column_results.append(result)
 
     choice_column_results = []
     for col_i in choice_single_answer_column_indices:
         column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
-        # print(column_responses)
     
     results = {
             'voting_form': {
@@ -420,3 +422,11 @@ def calculate_results(data: CalculateResultsRequest):
         'results': results,
         'warnings': warnings,
     }
+
+@app.get('/api/admin/results')
+def get_results(current_user: Annotated[User, Depends(get_current_user)]):
+    if not os.path.exists('data/results.json'):
+        raise HTTPException(status_code=404, detail='Results not found')
+    with open('data/results.json', 'r') as f:
+        results = json.load(f)
+    return results
