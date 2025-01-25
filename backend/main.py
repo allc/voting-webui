@@ -449,6 +449,8 @@ def calculate_results(
             'num_valid_responses': len(responses),
             'rank_column_results': ranking_column_results,
             'choice_column_results': choice_column_results,
+            'calculated_at': datetime.now(timezone.utc).isoformat(),
+            'requested_by': current_user.sub,
         }
 
     with open('data/results.json', 'w', encoding='utf8') as f:

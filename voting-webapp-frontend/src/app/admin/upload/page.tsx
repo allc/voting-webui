@@ -61,16 +61,24 @@ export default function AdminUpload() {
     if (!user) {
       return;
     }
-    const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/user-list`, {
-      headers: {
-        'Authorization': `Bearer ${user.accessToken}`,
-      },
-    });
-    if (!result.ok) {
-      return;
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/user-list`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        return;
+      }
+      const data = await result.json();
+      setUserListDetails(data);
+    }  catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
     }
-    const data = await result.json();
-    setUserListDetails(data);
   }
 
   const handleUserListUpload = async (file: File | null) => {

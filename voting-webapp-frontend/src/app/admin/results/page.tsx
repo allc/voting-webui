@@ -1,7 +1,8 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
-import { Accordion, Anchor, Button, Card, Group, Image, Table, Text, Title } from "@mantine/core";
+import { Accordion, Alert, Anchor, Button, Card, Group, Image, Table, Text, Title } from "@mantine/core";
+import { IconAlertTriangle } from "@tabler/icons-react";
 import { useContext, useEffect, useState } from "react";
 
 export default function Results() {
@@ -53,11 +54,15 @@ export default function Results() {
     rank_column_results: RankColumnResult[];
     choice_column_results: ChoiceColumnResult[];
     warnings: string[];
+    calculated_at: string;
+    requested_by: string;
   }
 
   const [user] = useContext(UserContext);
   const [votingResults, setvotingResults] = useState<VotingResults | null>(null);
   const [showResults, setShowResults] = useState<string[]>([]);
+  const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
+  const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
 
   const loadResults = async () => {
     if (!user) {
@@ -85,8 +90,58 @@ export default function Results() {
     setShowResults([...votingColumnNames, ...choiceColumnNames]);
   }
 
+  const loadUserListDetails = async () => {
+    if (!user) {
+      return;
+    }
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/user-list`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        return;
+      }
+      const data = await result.json();
+      setUserListDetails(data);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
+  const loadVotingFormDetails = async () => {
+    if (!user) {
+      return;
+    }
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        return;
+      }
+      const data = await result.json();
+      setVotingFormDetails(data);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
   useEffect(() => {
     loadResults();
+    loadUserListDetails();
+    loadVotingFormDetails();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const overview = votingResults ? (
@@ -106,10 +161,23 @@ export default function Results() {
               <Table.Td>Number of responses from invalid user</Table.Td>
               <Table.Td className={votingResults.num_responses - votingResults.num_valid_responses !== 0 ? 'text-red-500 font-bold' : ''}>{votingResults.num_responses - votingResults.num_valid_responses}</Table.Td>
             </Table.Tr>
+            <Table.Tr>
+              <Table.Td>Calculated at</Table.Td>
+              <Table.Td>{votingResults.calculated_at}</Table.Td>
+            </Table.Tr>
+            <Table.Tr>
+              <Table.Td>Requested by</Table.Td>
+              <Table.Td>{votingResults.requested_by}</Table.Td>
+            </Table.Tr>
           </Table.Tbody>
         </Table>
       </Card>
       <Card withBorder mt='md'>
+        {votingFormDetails && votingFormDetails.file_sha256 !== votingResults.voting_form.file_sha256 && (
+          <Alert variant="light" color="yellow" title="Voting form has updated" icon={<IconAlertTriangle />}>
+            Go to <Anchor href="/admin/upload">upload</Anchor > page
+          </Alert>
+        )}
         <Table variant="vertical">
           <Table.Tbody>
             <Table.Tr>
@@ -133,26 +201,33 @@ export default function Results() {
       </Card>
       <Card withBorder mt='md'>
         {votingResults.user_list ? (
-          <Table variant="vertical">
-            <Table.Tbody>
-              <Table.Tr>
-                <Table.Td>User list</Table.Td>
-                <Table.Td>{votingResults.user_list.filename}</Table.Td>
-              </Table.Tr>
-              <Table.Tr>
-                <Table.Td>User list SHA256</Table.Td>
-                <Table.Td>{votingResults.user_list.file_sha256}</Table.Td>
-              </Table.Tr>
-              <Table.Tr>
-                <Table.Td>User list uploaded at</Table.Td>
-                <Table.Td>{votingResults.user_list.uploaded_at}</Table.Td>
-              </Table.Tr>
-              <Table.Tr>
-                <Table.Td>User list uploaded by</Table.Td>
-                <Table.Td>{votingResults.user_list.uploaded_by}</Table.Td>
-              </Table.Tr>
-            </Table.Tbody>
-          </Table>
+          <>
+            {userListDetails && userListDetails.file_sha256 !== votingResults.user_list.file_sha256 && (
+              <Alert variant="light" color="yellow" title="User list has updated" icon={<IconAlertTriangle />}>
+                Go to <Anchor href="/admin/upload">upload</Anchor > page
+              </Alert>
+            )}
+            <Table variant="vertical">
+              <Table.Tbody>
+                <Table.Tr>
+                  <Table.Td>User list</Table.Td>
+                  <Table.Td>{votingResults.user_list.filename}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>User list SHA256</Table.Td>
+                  <Table.Td>{votingResults.user_list.file_sha256}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>User list uploaded at</Table.Td>
+                  <Table.Td>{votingResults.user_list.uploaded_at}</Table.Td>
+                </Table.Tr>
+                <Table.Tr>
+                  <Table.Td>User list uploaded by</Table.Td>
+                  <Table.Td>{votingResults.user_list.uploaded_by}</Table.Td>
+                </Table.Tr>
+              </Table.Tbody>
+            </Table>
+          </>
         ) : (
           <Text c='red'>Did not check against a users list</Text>
         )}
