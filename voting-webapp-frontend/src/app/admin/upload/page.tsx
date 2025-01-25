@@ -294,7 +294,7 @@ export default function AdminUpload() {
       if (!result.ok) {
         throw new Error('Failed to delete results');
       }
-      setUserListDetails(null);
+      setVotingResults(null);
     } catch (e: unknown) {
       if (e instanceof Error) {
         alert(e.message);

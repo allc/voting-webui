@@ -468,3 +468,9 @@ def get_results(current_user: Annotated[User, Depends(get_current_user)]):
     with open('data/results.json', 'r', encoding='utf8') as f:
         results = json.load(f)
     return results
+
+@app.delete('/api/admin/results')
+def delete_results(current_user: Annotated[User, Depends(get_current_user)]):
+    if os.path.exists('data/results.json'):
+        os.remove('data/results.json')
+    return {'message': 'Results deleted'}
