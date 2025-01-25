@@ -413,6 +413,24 @@ def calculate_results(
     choice_column_results = []
     for col_i in choice_single_answer_column_indices:
         column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
+        num_votes = 0
+        num_abstain = 0
+        counter = Counter()
+        for row_number, value in column_responses:
+            if not value:
+                num_abstain += 1
+            else:
+                value = str(value).strip()
+                counter[value] += 1
+                num_votes += 1
+        counts = [{'choice': choice, 'count': count} for choice, count in counter.most_common()]
+        result = {
+            'column_name': voting_form.cell(row=1, column=col_i).value,
+            'num_votes': num_votes,
+            'num_abstain': num_abstain,
+            'counts': counts,
+        }
+        choice_column_results.append(result)
     
     results = {
             'voting_form': {
@@ -430,6 +448,7 @@ def calculate_results(
             'num_responses': voting_form_details.num_responses,
             'num_valid_responses': len(responses),
             'rank_column_results': ranking_column_results,
+            'choice_column_results': choice_column_results,
         }
 
     with open('data/results.json', 'w', encoding='utf8') as f:

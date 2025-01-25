@@ -38,12 +38,20 @@ export default function Results() {
     errors: string[];
   }
 
+  interface ChoiceColumnResult {
+    column_name: string;
+    num_votes: number;
+    num_abstain: number;
+    counts: { choice: string, count: number }[];
+  }
+
   interface VotingResults {
     num_responses: number;
     num_valid_responses: number;
     voting_form: VotingFormDetails;
     user_list: UserListDetails | null;
     rank_column_results: RankColumnResult[];
+    choice_column_results: ChoiceColumnResult[];
     warnings: string[];
   }
 
@@ -72,8 +80,9 @@ export default function Results() {
     if (!votingResults) {
       return;
     }
-    const columnNames = votingResults.rank_column_results.map((rankColumnResult) => rankColumnResult.column_name);
-    setShowResults(columnNames);
+    const votingColumnNames = votingResults.rank_column_results.map((rankColumnResult) => rankColumnResult.column_name);
+    const choiceColumnNames = votingResults.choice_column_results.map((choiceColumnResult) => choiceColumnResult.column_name);
+    setShowResults([...votingColumnNames, ...choiceColumnNames]);
   }
 
   useEffect(() => {
@@ -197,6 +206,27 @@ export default function Results() {
     </Accordion.Item>
   ));
 
+  const choiceColumnResults = votingResults && votingResults.choice_column_results.map((choiceColumnResult) => (
+    <Accordion.Item key={choiceColumnResult.column_name} value={choiceColumnResult.column_name}>
+      <Accordion.Control><Text fw={700}>{choiceColumnResult.column_name}</Text></Accordion.Control>
+      <Accordion.Panel>
+        <Text>Number of votes: {choiceColumnResult.num_votes} | Number of abstain: {choiceColumnResult.num_abstain}</Text>
+        <Card mt='md' withBorder>
+          <Table variant="vertical">
+            <Table.Tbody>
+              {choiceColumnResult.counts.map((option, index) => (
+                <Table.Tr key={index}>
+                  <Table.Td fw={index === 0 ? 700 : 400}>{option.choice}</Table.Td>
+                  <Table.Td>{option.count}</Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        </Card>
+      </Accordion.Panel>
+    </Accordion.Item>
+  ));
+
   if (!votingResults) {
     return (
       <>
@@ -216,6 +246,7 @@ export default function Results() {
       </Group>
       <Accordion mt='md' variant='separated' multiple value={showResults} onChange={setShowResults}>
         {rankedColumnResults}
+        {choiceColumnResults}
       </Accordion>
     </>
   )
