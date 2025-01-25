@@ -1,10 +1,10 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
-import { Accordion, Anchor, Button, Card, Group, Table, Text, Title } from "@mantine/core";
+import { Accordion, Anchor, Button, Card, Group, Image, Table, Text, Title } from "@mantine/core";
 import { useContext, useEffect, useState } from "react";
 
-export default function Admin() {
+export default function Results() {
   interface VotingFormDetails {
     filename: string;
     file_sha256: string;
@@ -33,6 +33,7 @@ export default function Admin() {
     num_abstain: number;
     num_invalid: number;
     pairs: Pairs[] | null;
+    graph_url: string | null;
     warnings: string[];
     errors: string[];
   }
@@ -89,11 +90,11 @@ export default function Admin() {
               <Table.Td>{votingResults.num_responses}</Table.Td>
             </Table.Tr>
             <Table.Tr>
-              <Table.Td>Number of valid responses</Table.Td>
+              <Table.Td>Number of responses from valid user</Table.Td>
               <Table.Td>{votingResults.num_valid_responses}</Table.Td>
             </Table.Tr>
             <Table.Tr>
-              <Table.Td>Number of invalid responses</Table.Td>
+              <Table.Td>Number of responses from invalid user</Table.Td>
               <Table.Td className={votingResults.num_responses - votingResults.num_valid_responses !== 0 ? 'text-red-500 font-bold' : ''}>{votingResults.num_responses - votingResults.num_valid_responses}</Table.Td>
             </Table.Tr>
           </Table.Tbody>
@@ -152,7 +153,7 @@ export default function Admin() {
 
   const rankedColumnResults = votingResults && votingResults.rank_column_results.map((rankColumnResult) => (
     <Accordion.Item key={rankColumnResult.column_name} value={rankColumnResult.column_name}>
-      <Accordion.Control><Text fw={700}>{rankColumnResult.column_name}</Text></Accordion.Control>
+      <Accordion.Control icon={rankColumnResult.errors.length > 0 ? '❌' : rankColumnResult.warnings.length > 0 ? '⚠' : null}><Text fw={700}>{rankColumnResult.column_name}</Text></Accordion.Control>
       <Accordion.Panel>
         {rankColumnResult.errors.map((error, index) => (
           <Text key={index} c='red'>{error}</Text>
@@ -160,26 +161,36 @@ export default function Admin() {
         {rankColumnResult.warnings.map((warning, index) => (
           <Text key={index} c='yellow'>{warning}</Text>
         ))}
-        {rankColumnResult.winners && rankColumnResult.pairs ? (<>
-          <Text><span className='font-bold'>Winners: </span>{rankColumnResult.winners.join(', ')}</Text>
-          <Text>Number of votes: {rankColumnResult.num_votes} | Number of abstain: {rankColumnResult.num_abstain} | Number of invalid: <span className={rankColumnResult.num_invalid !== 0 ? 'text-red-500 font-bold' : ''}>{rankColumnResult.num_invalid}</span></Text>
-          <Card mt='md' withBorder>
-            <Table variant="vertical">
-              <Table.Tbody>
-                {rankColumnResult.pairs.map((pair, index) => (
-                  <Table.Tr key={index}>
-                    <Table.Td>{pair.winner}</Table.Td>
-                    <Table.Td>{pair.winner_votes}</Table.Td>
-                    <Table.Td>{pair.non_winner}</Table.Td>
-                    <Table.Td>{pair.non_winner_votes}</Table.Td>
-                    <Table.Td>Margin: {pair.winner_votes - pair.non_winner_votes}</Table.Td>
-                  </Table.Tr>
-                ))}
-              </Table.Tbody>
-            </Table>
-          </Card></>) : (
+        {rankColumnResult.winners && rankColumnResult.pairs ? (
           <>
-            <Text c='red'>Could not calculate ranking result, maybe this column is not a ranking column</Text>
+            <Text><span className='font-bold'>Winners: </span>{rankColumnResult.winners.join(', ')}</Text>
+            <Text>Number of votes: {rankColumnResult.num_votes} | Number of abstain: {rankColumnResult.num_abstain} | Number of invalid: <span className={rankColumnResult.num_invalid !== 0 ? 'text-red-500 font-bold' : ''}>{rankColumnResult.num_invalid}</span></Text>
+            <Card mt='md' withBorder>
+              <Table variant="vertical">
+                <Table.Tbody>
+                  {rankColumnResult.pairs.map((pair, index) => (
+                    <Table.Tr key={index}>
+                      <Table.Td>{pair.winner}</Table.Td>
+                      <Table.Td>{pair.winner_votes}</Table.Td>
+                      <Table.Td>{pair.non_winner}</Table.Td>
+                      <Table.Td>{pair.non_winner_votes}</Table.Td>
+                      <Table.Td>Margin: {pair.winner_votes - pair.non_winner_votes}</Table.Td>
+                    </Table.Tr>
+                  ))}
+                </Table.Tbody>
+              </Table>
+            </Card>
+            {rankColumnResult.graph_url && (
+              <Image
+                src={rankColumnResult.graph_url}
+                alt={`Graph for ${rankColumnResult.column_name} result`}
+                fit='contain'
+                mah={400}
+              />
+            )}
+          </>) : (
+          <>
+            <Text c='red'>Could not calculate ranking result. Please check the column is a ranking column and responses are checked against the correct users list</Text>
           </>
         )}
       </Accordion.Panel>

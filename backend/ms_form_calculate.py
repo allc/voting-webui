@@ -68,7 +68,8 @@ def sort_pairs(pairs: list[Pair], ballots: list[Ballot]) -> tuple[list[Pair], li
         else:
             pairs_group.append([pair])
     if margin_tie:
-        warnings.append('Tie in margin of victory (does not necessarily affect the result, manual check the pairs order recommanded)')
+        # warnings.append('Tie in margin of victory (does not necessarily affect the result)')
+        pass
     # tie-breaking within each group
     # add pairs whose non-winner exists in previous pairs' non-winner first
     # tie-breaking using a random ballot adding the pair with the non-winner ranked lower

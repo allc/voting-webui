@@ -16,8 +16,14 @@ from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from email_validator import validate_email
 import networkx as nx
+from matplotlib import pyplot as plt
+import matplotlib
+import io
+from base64 import b64encode
 from .ms_form_calculate import calculate_ranking_result
 from .config import settings
+
+matplotlib.use('agg')
 
 bearer_scheme = HTTPBearer()
 
@@ -218,7 +224,7 @@ def upload_user_list(
     with open('data/user_list.txt', 'wb') as f:
         f.write(file.file.read())
     try:
-        with open('data/user_list.txt', 'r') as f:
+        with open('data/user_list.txt', 'r', encoding='utf8') as f:
             num_lines = sum(1 for line in f if line.strip())
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail='File does not seem to be a text file or contains non-Unicode characters')
@@ -231,7 +237,7 @@ def upload_user_list(
         uploaded_at=datetime.now(timezone.utc).isoformat(),
         uploaded_by=current_user.sub,
     )
-    with open('data/user_list_details.json', 'w') as f:
+    with open('data/user_list_details.json', 'w', encoding='utf8') as f:
         f.write(details.model_dump_json(indent=2) + '\n')
     return {'message': 'File uploaded'}
 
@@ -239,7 +245,7 @@ def upload_user_list(
 def get_user_list_details(current_user: Annotated[User, Depends(get_current_user)]):
     if not os.path.exists('data/user_list_details.json'):
         raise HTTPException(status_code=404, detail='User list not found')
-    with open('data/user_list_details.json', 'r') as f:
+    with open('data/user_list_details.json', 'r', encoding='utf8') as f:
         details = UserListDetails.model_validate(json.load(f))
     return details
 
@@ -275,7 +281,7 @@ def upload_voting_form(
         uploaded_at=datetime.now(timezone.utc).isoformat(),
         uploaded_by=current_user.sub,
     )
-    with open('data/voting_form_details.json', 'w') as f:
+    with open('data/voting_form_details.json', 'w', encoding='utf8') as f:
         f.write(details.model_dump_json(indent=2) + '\n')
     return {'message': 'File uploaded'}
 
@@ -283,7 +289,7 @@ def upload_voting_form(
 def get_voting_form_details(current_user: Annotated[User, Depends(get_current_user)]):
     if not os.path.exists('data/voting_form_details.json'):
         raise HTTPException(status_code=404, detail='Voting form not found')
-    with open('data/voting_form_details.json', 'r') as f:
+    with open('data/voting_form_details.json', 'r', encoding='utf8') as f:
         details = VotingFormDetails.model_validate(json.load(f))
     return details
 
@@ -311,7 +317,7 @@ def calculate_results(
         voting_form = get_spreadsheet_worksheet('data/voting_form.xlsx')
     except:
         raise HTTPException(status_code=400, detail='Error occurred, could not open voting response file')
-    with open('data/voting_form_details.json', 'r') as f:
+    with open('data/voting_form_details.json', 'r', encoding='utf8') as f:
         voting_form_details = VotingFormDetails.model_validate(json.load(f))
     if voting_form_details.file_sha256 != data.voting_form_hash:
         warnings.append('Voting form hash does not match')
@@ -322,9 +328,9 @@ def calculate_results(
         if not os.path.exists('data/user_list.txt') or not os.path.exists('data/user_list_details.json'):
             warnings.append('User list not found, skipping user list check')
         else:
-            with open('data/user_list.txt', 'r') as f:
+            with open('data/user_list.txt', 'r', encoding='utf8') as f:
                 user_list = [line.strip().lower() for line in f if line.strip()]
-            with open('data/user_list_details.json', 'r') as f:
+            with open('data/user_list_details.json', 'r', encoding='utf8') as f:
                 user_list_details = UserListDetails.model_validate(json.load(f))
             if user_list_details.file_sha256 != data.user_list_hash:
                 warnings.append('User list hash does not match')
@@ -378,13 +384,23 @@ def calculate_results(
             num_abstain += num_abstain_
             num_invalid += num_invalid_
             pairs = [pair.model_dump() for pair in pairs]
-            lock_graph = nx.node_link_data(lock_graph, edges='edges') # type: ignore
+            lock_graph_ = nx.node_link_data(lock_graph, edges='edges') # type: ignore
+            try:
+                plt.clf()
+                nx.draw_networkx(lock_graph, arrowsize=20)
+                f = io.BytesIO()
+                plt.savefig(f, format='png')
+                f.seek(0)
+                graph_url = 'data:image/png;base64,'+b64encode(f.read()).decode()
+            except:
+                graph_url = None
 
         result = {
             'column_name': voting_form.cell(row=1, column=col_i).value,
             'winners': winners,
             'pairs': pairs,
-            'lock_graph': lock_graph,
+            'lock_graph': lock_graph_,
+            'graph_url': graph_url,
             'num_votes': num_votes,
             'num_abstain': num_abstain,
             'num_invalid': num_invalid,
@@ -415,7 +431,7 @@ def calculate_results(
             'rank_column_results': ranking_column_results,
         }
 
-    with open('data/results.json', 'w') as f:
+    with open('data/results.json', 'w', encoding='utf8') as f:
         f.write(json.dumps(results, indent=2) + '\n')
 
     return {
@@ -427,6 +443,6 @@ def calculate_results(
 def get_results(current_user: Annotated[User, Depends(get_current_user)]):
     if not os.path.exists('data/results.json'):
         raise HTTPException(status_code=404, detail='Results not found')
-    with open('data/results.json', 'r') as f:
+    with open('data/results.json', 'r', encoding='utf8') as f:
         results = json.load(f)
     return results
