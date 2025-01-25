@@ -246,6 +246,8 @@ export default function AdminUpload() {
         if (json.warnings.length > 0) {
           alert('Warning:\n' + json.warnings.join('\n'));
         }
+        loadUserListDetails();
+        loadVotingFormDetails();
       }
     } catch (e: unknown) {
       if (e instanceof Error) {
