@@ -15,7 +15,7 @@ import os
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from email_validator import validate_email
-from .ms_form_calculate import calculate_ranking_results
+from .ms_form_calculate import calculate_ranking_result
 from .config import settings
 
 bearer_scheme = HTTPBearer()
@@ -138,9 +138,9 @@ def get_column_types(ws: Worksheet):
 def check_user_email_in_list(email: str, user_list: list[str]):
     try:
         emailinfo = validate_email(email, check_deliverability=False)
-        if emailinfo.local_part.lower() not in user_list:
-            return False
         if settings.user_email_domains and emailinfo.domain not in [d.lower() for d in settings.user_email_domains]:
+            return False
+        if emailinfo.local_part.lower() not in user_list:
             return False
         return True
     except:
@@ -341,8 +341,37 @@ def calculate_results(data: CalculateResultsRequest):
     ranking_column_indices = [col.index for col in data.columns.ranking]
     choice_single_answer_column_indices = [col.index for col in data.columns.choice_single_answer]
 
+    ranking_column_results = []
     for col_i in ranking_column_indices:
-        result = calculate_ranking_results(voting_form, col_i)
+        errors = []
+        warnings = []
+        num_invalid = 0
+
+        column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
+        # remove non-strings
+        column_responses_ = []
+        for row_number, value in column_responses:
+            if value is None or isinstance(value, str):
+                column_responses_.append((row_number, value))
+            else:
+                num_invalid += 1
+                warnings.append(f'Row {row_number} is not string, invalid and ignored')
+
+        result_ = calculate_ranking_result(column_responses_)
+
+        result = {
+            'column_name': voting_form.cell(row=1, column=col_i).value,
+            'result': result_,
+            'num_invalid': num_invalid,
+            'errors': errors,
+            'warnings': warnings,
+        }
+        print(result)
+
+    choice_column_results = []
+    for col_i in choice_single_answer_column_indices:
+        column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
+        print(column_responses)
     
     with open('data/results.json', 'w') as f:
         results = {
