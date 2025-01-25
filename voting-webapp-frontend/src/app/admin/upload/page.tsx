@@ -239,9 +239,11 @@ export default function AdminUpload() {
       });
       loadResults();
       drawerOpenClose.close();
+      const json = await result.json();
       if (!result.ok) {
-        const json = await result.json();
         throw new Error(json.detail);
+      } else {
+        alert(json.warnings.join('\n'));
       }
     } catch (e: unknown) {
       if (e instanceof Error) {
