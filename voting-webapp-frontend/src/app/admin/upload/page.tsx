@@ -1,6 +1,9 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
+import { UserListDetails } from "@/types/UserListDetails";
+import { Columns, VotingFormDetails } from "@/types/VotingFormDetails";
+import { VotingResults } from "@/types/VotingResults";
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import { ActionIcon, Alert, Button, Card, Checkbox, Drawer, Group, InputBase, Pill, Table, Text, Title, Tooltip } from "@mantine/core";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
@@ -10,34 +13,6 @@ import { IconAlertTriangle, IconFileSpreadsheet, IconFileTypeTxt, IconTrash, Ico
 import { useContext, useEffect, useState } from "react";
 
 export default function AdminUpload() {
-  interface UserListDetails {
-    filename: string;
-    num_users: number;
-    file_sha256: string;
-    uploaded_at: string;
-    uploaded_by: string;
-  }
-
-  interface ColumnNameIndex {
-    name: string;
-    index: number;
-  }
-
-  interface Columns {
-    default: ColumnNameIndex[];
-    ranking: ColumnNameIndex[];
-    choice_single_answer: ColumnNameIndex[];
-  }
-
-  interface VotingFormDetails {
-    filename: string;
-    columns: Columns;
-    num_responses: number;
-    file_sha256: string;
-    uploaded_at: string;
-    uploaded_by: string;
-  }
-
   const columnsTypeKeyNames = [
     { 'key': 'ranking', 'name': 'Ranking Columns' },
     { 'key': 'choice_single_answer', 'name': 'Choice (Single Answer) Columns' },
@@ -48,6 +23,7 @@ export default function AdminUpload() {
   const [user] = useContext(UserContext);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
+  const [votingResults, setVotingResults] = useState<VotingResults | null>(null);
   const [columns, setColumns] = useState<Columns>({ 'default': [], 'ranking': [], 'choice_single_answer': [] });
   const [drawerOpened, drawerOpenClose] = useDisclosure(false);
   const calculateResultsForm = useForm({
@@ -72,7 +48,7 @@ export default function AdminUpload() {
       }
       const data = await result.json();
       setUserListDetails(data);
-    }  catch (e: unknown) {
+    } catch (e: unknown) {
       if (e instanceof Error) {
         alert(e.message);
       } else {
@@ -151,16 +127,24 @@ export default function AdminUpload() {
     if (!user) {
       return;
     }
-    const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
-      headers: {
-        'Authorization': `Bearer ${user.accessToken}`,
-      },
-    });
-    if (!result.ok) {
-      return;
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/voting-form`, {
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        return;
+      }
+      const data = await result.json();
+      setVotingFormDetails(data);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
     }
-    const data = await result.json();
-    setVotingFormDetails(data);
   }
 
   const handleVotingFormUpload = async (file: File | null) => {
@@ -252,6 +236,7 @@ export default function AdminUpload() {
           columns: columns,
         }),
       });
+      loadResults();
       if (!result.ok) {
         const json = await result.json();
         throw new Error(json.detail);
@@ -275,9 +260,54 @@ export default function AdminUpload() {
     setColumns(columnsCopy);
   };
 
+  const loadResults = async () => {
+    if (!user) {
+      return;
+    }
+    const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/results`, {
+      headers: {
+        'Authorization': `Bearer ${user.accessToken}`,
+      },
+    });
+    if (!result.ok) {
+      return;
+    }
+    const data = await result.json();
+    setVotingResults(data);
+  }
+
+  const handleDeleteResults = async () => {
+    const confirm = window.confirm('Are you sure you want to delete the results?');
+    if (!confirm) {
+      return;
+    }
+    if (!user) {
+      return;
+    }
+    try {
+      const result = await fetch(`${process.env.NEXT_PUBLIC_API_SERVER}/api/admin/results`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.accessToken}`,
+        },
+      });
+      if (!result.ok) {
+        throw new Error('Failed to delete results');
+      }
+      setUserListDetails(null);
+    } catch (e: unknown) {
+      if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        throw e;
+      }
+    }
+  }
+
   useEffect(() => {
     loadUserListDetails();
     loadVotingFormDetails();
+    loadResults();
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -543,6 +573,20 @@ export default function AdminUpload() {
           </Button>
         </Tooltip>
       </Group>
+      {votingResults && (
+        <>
+          <Card withBorder mt='md'>
+            {((userListDetails && votingResults.user_list && userListDetails.file_sha256 !== votingResults.user_list.file_sha256) || (votingFormDetails && votingFormDetails.file_sha256 !== votingResults.voting_form.file_sha256)) && (
+              <Alert variant="light" color="red" title="Voting response or user list has updated since the result was calculated" icon={<IconAlertTriangle />}></Alert>
+            )}
+            <Text>A result was calculated at {votingResults.calculated_at} requested by {votingResults.requested_by}</Text>
+            <Group mt='md'>
+              <Button component='a' href='/admin/results'>View Results</Button>
+              <Button color="red" onClick={handleDeleteResults}>Delete Result</Button>
+            </Group>
+          </Card>
+        </>
+      )}
     </>
   )
 }

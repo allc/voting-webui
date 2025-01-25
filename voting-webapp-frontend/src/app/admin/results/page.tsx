@@ -1,65 +1,16 @@
 'use client';
 
 import { UserContext } from "@/app/UserProvider";
+import { UserListDetails } from "@/types/UserListDetails";
+import { VotingFormDetails } from "@/types/VotingFormDetails";
+import { VotingResults } from "@/types/VotingResults";
 import { Accordion, Alert, Anchor, Button, Card, Group, Image, Table, Text, Title } from "@mantine/core";
 import { IconAlertTriangle } from "@tabler/icons-react";
 import { useContext, useEffect, useState } from "react";
 
 export default function Results() {
-  interface VotingFormDetails {
-    filename: string;
-    file_sha256: string;
-    uploaded_at: string;
-    uploaded_by: string;
-  }
-
-  interface UserListDetails {
-    filename: string;
-    file_sha256: string;
-    uploaded_at: string;
-    uploaded_by: string;
-  }
-
-  interface Pairs {
-    winner: string;
-    winner_votes: number;
-    non_winner: string;
-    non_winner_votes: number;
-  }
-
-  interface RankColumnResult {
-    column_name: string;
-    winners: string[] | null;
-    num_votes: number;
-    num_abstain: number;
-    num_invalid: number;
-    pairs: Pairs[] | null;
-    graph_url: string | null;
-    warnings: string[];
-    errors: string[];
-  }
-
-  interface ChoiceColumnResult {
-    column_name: string;
-    num_votes: number;
-    num_abstain: number;
-    counts: { choice: string, count: number }[];
-  }
-
-  interface VotingResults {
-    num_responses: number;
-    num_valid_responses: number;
-    voting_form: VotingFormDetails;
-    user_list: UserListDetails | null;
-    rank_column_results: RankColumnResult[];
-    choice_column_results: ChoiceColumnResult[];
-    warnings: string[];
-    calculated_at: string;
-    requested_by: string;
-  }
-
   const [user] = useContext(UserContext);
-  const [votingResults, setvotingResults] = useState<VotingResults | null>(null);
+  const [votingResults, setVotingResults] = useState<VotingResults | null>(null);
   const [showResults, setShowResults] = useState<string[]>([]);
   const [userListDetails, setUserListDetails] = useState<UserListDetails | null>(null);
   const [votingFormDetails, setVotingFormDetails] = useState<VotingFormDetails | null>(null);
@@ -77,8 +28,7 @@ export default function Results() {
       return;
     }
     const data = await result.json();
-    setvotingResults(data);
-    console.log(data);
+    setVotingResults(data);
   }
 
   const showAll = () => {
@@ -174,7 +124,7 @@ export default function Results() {
       </Card>
       <Card withBorder mt='md'>
         {votingFormDetails && votingFormDetails.file_sha256 !== votingResults.voting_form.file_sha256 && (
-          <Alert variant="light" color="yellow" title="Voting form has updated" icon={<IconAlertTriangle />}>
+          <Alert variant="light" color="yellow" title="Voting response has updated" icon={<IconAlertTriangle />}>
             Go to <Anchor href="/admin/upload">upload</Anchor > page
           </Alert>
         )}
