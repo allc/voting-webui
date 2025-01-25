@@ -373,11 +373,12 @@ def calculate_results(
         column_warnings += warnings_
         errors += errors_
 
+        winners = None
+        pairs = None
+        lock_graph_ = None
+        graph_url = None
         if not result_:
             num_invalid = 0
-            winners = None
-            pairs = None
-            lock_graph = None
         else:
             winners, pairs, lock_graph, num_votes_, num_abstain_, num_invalid_ = result_
             num_votes += num_votes_
@@ -393,7 +394,7 @@ def calculate_results(
                 f.seek(0)
                 graph_url = 'data:image/png;base64,'+b64encode(f.read()).decode()
             except:
-                graph_url = None
+                pass
 
         result = {
             'column_name': voting_form.cell(row=1, column=col_i).value,

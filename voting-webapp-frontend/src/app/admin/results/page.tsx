@@ -104,19 +104,19 @@ export default function Results() {
         <Table variant="vertical">
           <Table.Tbody>
             <Table.Tr>
-              <Table.Td>Voting form</Table.Td>
+              <Table.Td>Voting response</Table.Td>
               <Table.Td>{votingResults.voting_form.filename}</Table.Td>
             </Table.Tr>
             <Table.Tr>
-              <Table.Td>Voting form SHA256</Table.Td>
+              <Table.Td>Voting response SHA256</Table.Td>
               <Table.Td>{votingResults.voting_form.file_sha256}</Table.Td>
             </Table.Tr>
             <Table.Tr>
-              <Table.Td>Voting form uploaded at</Table.Td>
+              <Table.Td>Voting response uploaded at</Table.Td>
               <Table.Td>{votingResults.voting_form.uploaded_at}</Table.Td>
             </Table.Tr>
             <Table.Tr>
-              <Table.Td>Voting form uploaded by</Table.Td>
+              <Table.Td>Voting response uploaded by</Table.Td>
               <Table.Td>{votingResults.voting_form.uploaded_by}</Table.Td>
             </Table.Tr>
           </Table.Tbody>
