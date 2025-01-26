@@ -241,13 +241,15 @@ export default function AdminUpload() {
       drawerOpenClose.close();
       const json = await result.json();
       if (!result.ok) {
+        loadUserListDetails();
+        loadVotingFormDetails();
         throw new Error(json.detail);
       } else {
         if (json.warnings.length > 0) {
+          loadUserListDetails();
+          loadVotingFormDetails();
           alert('Warning:\n' + json.warnings.join('\n'));
         }
-        loadUserListDetails();
-        loadVotingFormDetails();
       }
     } catch (e: unknown) {
       if (e instanceof Error) {
