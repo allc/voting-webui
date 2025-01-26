@@ -43,8 +43,8 @@ export default function Results() {
     if (!votingResults) {
       return;
     }
-    const votingColumnNames = votingResults.rank_column_results.map((rankColumnResult) => rankColumnResult.column_name);
-    const choiceColumnNames = votingResults.choice_column_results.map((choiceColumnResult) => choiceColumnResult.column_name);
+    const votingColumnNames = votingResults.rank_column_results.map((_rankColumnResult, index) => 'ranking-' + index);
+    const choiceColumnNames = votingResults.choice_column_results.map((_choiceColumnResult, index) => 'choice-' + index);
     setShowResults([...votingColumnNames, ...choiceColumnNames]);
   }
 
@@ -193,8 +193,8 @@ export default function Results() {
     </>
   ) : null;
 
-  const rankedColumnResults = votingResults && votingResults.rank_column_results.map((rankColumnResult) => (
-    <Accordion.Item key={rankColumnResult.column_name} value={rankColumnResult.column_name}>
+  const rankedColumnResults = votingResults && votingResults.rank_column_results.map((rankColumnResult, index) => (
+    <Accordion.Item key={index} value={'ranking-' + index}>
       <Accordion.Control icon={rankColumnResult.errors.length > 0 ? '❌' : rankColumnResult.warnings.length > 0 ? '⚠' : null}><Text fw={700}>{rankColumnResult.column_name}</Text></Accordion.Control>
       <Accordion.Panel>
         {rankColumnResult.errors.map((error, index) => (
@@ -239,8 +239,8 @@ export default function Results() {
     </Accordion.Item>
   ));
 
-  const choiceColumnResults = votingResults && votingResults.choice_column_results.map((choiceColumnResult) => (
-    <Accordion.Item key={choiceColumnResult.column_name} value={choiceColumnResult.column_name}>
+  const choiceColumnResults = votingResults && votingResults.choice_column_results.map((choiceColumnResult, index) => (
+    <Accordion.Item key={index} value={'choice-' + index}>
       <Accordion.Control><Text fw={700}>{choiceColumnResult.column_name}</Text></Accordion.Control>
       <Accordion.Panel>
         <Text>Number of votes: {choiceColumnResult.num_votes} | Number of abstain: {choiceColumnResult.num_abstain}</Text>
