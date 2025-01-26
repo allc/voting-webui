@@ -19,3 +19,7 @@
 1. Go to `voting-webapp-frontend` folder
 2. Run `npm install --force`
 3. Run `npm run dev`
+
+### TODO
+
+- [ ] Use D3.js or similar for visualising the results
