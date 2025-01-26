@@ -147,15 +147,16 @@ def get_column_types(ws: Worksheet):
     }
     for col_i in range(1, ws.max_column + 1):
         col_name = ws.cell(row=1, column=col_i).value
+        if not col_name:
+            col_name = ws.cell(row=1, column=col_i).column_letter
+        else:
+            col_name = str(col_name).strip()
+
         if col_name in MS_FORM_COLUMNS:
             columns['default'].append({'name': col_name, 'index': col_i})
         elif guess_is_ranking_column(ws, col_i):
-            if not isinstance(col_name, str): # kinda out of scope, but might as well deal with it
-                col_name = ws.cell(row=1, column=col_i).column_letter
             columns['ranking'].append({'name': col_name, 'index': col_i})
         else:
-            if not isinstance(col_name, str):
-                col_name = ws.cell(row=1, column=col_i).column_letter
             columns['choice_single_answer'].append({'name': col_name, 'index': col_i})
     return columns
 

@@ -623,7 +623,7 @@ export default function AdminUpload() {
         <>
           <Card withBorder mt='md'>
             {((userListDetails && votingResults.user_list && userListDetails.file_sha256 !== votingResults.user_list.file_sha256) || (votingFormDetails && votingFormDetails.file_sha256 !== votingResults.voting_form.file_sha256)) && (
-              <Alert variant="light" color="red" title="Voting response or user list has updated since the result was calculated" icon={<IconAlertTriangle />}></Alert>
+              <Alert variant="light" color="yellow" title="Voting response or user list has updated since the result was calculated" icon={<IconAlertTriangle />}></Alert>
             )}
             <Text>A result was calculated at {votingResults.calculated_at} requested by {votingResults.requested_by}</Text>
             <Group mt='md'>
