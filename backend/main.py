@@ -320,7 +320,7 @@ def calculate_results(
     with open('data/voting_form_details.json', 'r', encoding='utf8') as f:
         voting_form_details = VotingFormDetails.model_validate(json.load(f))
     if voting_form_details.file_sha256 != data.voting_form_hash:
-        warnings.append('Voting form hash does not match')
+        warnings.append('Voting form has changed, results may be unexpected')
 
     # load user list if needed
     user_list = None
@@ -333,7 +333,7 @@ def calculate_results(
             with open('data/user_list_details.json', 'r', encoding='utf8') as f:
                 user_list_details = UserListDetails.model_validate(json.load(f))
             if user_list_details.file_sha256 != data.user_list_hash:
-                warnings.append('User list hash does not match')
+                warnings.append('User list has changed')
 
     responses = [Row(row_number=i, row=row) for i, row in enumerate(voting_form.iter_rows(values_only=True, min_row=2), start=2)]
     if user_list:
@@ -353,84 +353,90 @@ def calculate_results(
 
     ranking_column_results = []
     for col_i in ranking_column_indices:
-        errors = []
-        column_warnings = []
-        num_votes = 0
-        num_abstain = 0
-        num_invalid = 0
-
-        column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
-        # remove non-strings
-        column_responses_ = []
-        for row_number, value in column_responses:
-            if value is None or isinstance(value, str):
-                column_responses_.append((row_number, value))
-            else:
-                num_invalid += 1
-                column_warnings.append(f'Row {row_number} is not string, invalid and ignored')
-
-        result_, warnings_, errors_ = calculate_ranking_result(column_responses_)
-        column_warnings += warnings_
-        errors += errors_
-
-        winners = None
-        pairs = None
-        lock_graph_ = None
-        graph_url = None
-        if not result_:
+        try:
+            errors = []
+            column_warnings = []
+            num_votes = 0
+            num_abstain = 0
             num_invalid = 0
-        else:
-            winners, pairs, lock_graph, num_votes_, num_abstain_, num_invalid_ = result_
-            num_votes += num_votes_
-            num_abstain += num_abstain_
-            num_invalid += num_invalid_
-            pairs = [pair.model_dump() for pair in pairs]
-            lock_graph_ = nx.node_link_data(lock_graph, edges='edges') # type: ignore
-            try:
-                plt.clf()
-                nx.draw_networkx(lock_graph, arrowsize=20)
-                f = io.BytesIO()
-                plt.savefig(f, format='png')
-                f.seek(0)
-                graph_url = 'data:image/png;base64,'+b64encode(f.read()).decode()
-            except:
-                pass
 
-        result = {
-            'column_name': voting_form.cell(row=1, column=col_i).value,
-            'winners': winners,
-            'pairs': pairs,
-            'lock_graph': lock_graph_,
-            'graph_url': graph_url,
-            'num_votes': num_votes,
-            'num_abstain': num_abstain,
-            'num_invalid': num_invalid,
-            'errors': errors,
-            'warnings': column_warnings,
-        }
-        ranking_column_results.append(result)
+            column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
+            # remove non-strings
+            column_responses_ = []
+            for row_number, value in column_responses:
+                if value is None or isinstance(value, str):
+                    column_responses_.append((row_number, value))
+                else:
+                    num_invalid += 1
+                    column_warnings.append(f'Row {row_number} is not string, invalid and ignored')
+
+            result_, warnings_, errors_ = calculate_ranking_result(column_responses_)
+            column_warnings += warnings_
+            errors += errors_
+
+            winners = None
+            pairs = None
+            lock_graph_ = None
+            graph_url = None
+            if not result_:
+                num_invalid = 0
+            else:
+                winners, pairs, lock_graph, num_votes_, num_abstain_, num_invalid_ = result_
+                num_votes += num_votes_
+                num_abstain += num_abstain_
+                num_invalid += num_invalid_
+                pairs = [pair.model_dump() for pair in pairs]
+                lock_graph_ = nx.node_link_data(lock_graph, edges='edges') # type: ignore
+                try:
+                    plt.clf()
+                    nx.draw_networkx(lock_graph, arrowsize=20)
+                    f = io.BytesIO()
+                    plt.savefig(f, format='png')
+                    f.seek(0)
+                    graph_url = 'data:image/png;base64,'+b64encode(f.read()).decode()
+                except:
+                    pass
+
+            result = {
+                'column_name': voting_form.cell(row=1, column=col_i).value,
+                'winners': winners,
+                'pairs': pairs,
+                'lock_graph': lock_graph_,
+                'graph_url': graph_url,
+                'num_votes': num_votes,
+                'num_abstain': num_abstain,
+                'num_invalid': num_invalid,
+                'errors': errors,
+                'warnings': column_warnings,
+            }
+            ranking_column_results.append(result)
+        except:
+            pass
 
     choice_column_results = []
     for col_i in choice_single_answer_column_indices:
-        column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
-        num_votes = 0
-        num_abstain = 0
-        counter = Counter()
-        for row_number, value in column_responses:
-            if not value:
-                num_abstain += 1
-            else:
-                value = str(value).strip()
-                counter[value] += 1
-                num_votes += 1
-        counts = [{'choice': choice, 'count': count} for choice, count in counter.most_common()]
-        result = {
-            'column_name': voting_form.cell(row=1, column=col_i).value,
-            'num_votes': num_votes,
-            'num_abstain': num_abstain,
-            'counts': counts,
-        }
-        choice_column_results.append(result)
+        try:
+            column_responses = [(row.row_number, row.row[col_i - 1]) for row in responses]
+            num_votes = 0
+            num_abstain = 0
+            counter = Counter()
+            for row_number, value in column_responses:
+                if not value:
+                    num_abstain += 1
+                else:
+                    value = str(value).strip()
+                    counter[value] += 1
+                    num_votes += 1
+            counts = [{'choice': choice, 'count': count} for choice, count in counter.most_common()]
+            result = {
+                'column_name': voting_form.cell(row=1, column=col_i).value,
+                'num_votes': num_votes,
+                'num_abstain': num_abstain,
+                'counts': counts,
+            }
+            choice_column_results.append(result)
+        except:
+            pass
     
     results = {
             'voting_form': {
