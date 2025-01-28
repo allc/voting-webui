@@ -1,6 +1,6 @@
 # Voting Web App
 
-The app takes ranking ballots collected with Microsoft Forms within an organisation, and calculates the results using ranked pairs method (instead of the Microsoft Forms built-in point-based method) and visualises the results. It optionally checks against a list of eligible voters in an organisation.
+The app takes ranking ballots collected with Microsoft Forms within an organisation, and calculates the results using ranked pairs method (used by nerds, instead of the Microsoft Forms built-in point-based method) and visualises the results. It optionally checks against a list of eligible voters in an organisation.
 
 To learn more about the ranked pairs method, see [ranked pairs on Wikipedia](https://en.wikipedia.org/wiki/Ranked_pairs). To interactively learn about different voting methods, see Nicky Case's [To Build a Better Ballot](https://ncase.me/ballot) (it does not go into the details of the ranked pairs method though).
 
