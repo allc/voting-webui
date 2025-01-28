@@ -10,6 +10,9 @@ See [voting setup instructions](https://voting-demo.cjxol.com/setup-instructions
 
 ## Deploy
 
+1. Copy `.env.prod` to `.env` and fill in the required values
+2. Run `docker-compose up -d`
+
 ## Development
 
 1. Copy `.env.prod` to `.env` and fill in the required values
