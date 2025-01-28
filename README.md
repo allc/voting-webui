@@ -30,7 +30,7 @@ See [voting setup instructions](https://voting-demo.cjxol.com/setup-instructions
 2. Run `npm install --force`
 3. Run `npm run dev`
 
-### Demo
+## Demo
 
 [Live demo](https://voting-demo.cjxol.com). Please do not upload any sensitive data.
 
