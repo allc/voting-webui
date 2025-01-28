@@ -34,6 +34,8 @@ See [voting setup instructions](https://voting-demo.cjxol.com/setup-instructions
 
 [Live demo](https://voting-demo.cjxol.com). Please do not upload any sensitive data.
 
+[Example Voting Responses File](https://git.tardisproject.uk/chiv/ranked-pairs-voting/-/blob/main/example.xlsx?ref_type=heads)
+
 #### Upload user list and voting responses
 
 ![Upload user list and voting responses](./docs/images/upload.png)
