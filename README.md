@@ -36,18 +36,18 @@ See [voting setup instructions](https://voting-demo.cjxol.com/setup-instructions
 
 [Example Voting Responses File](https://git.tardisproject.uk/chiv/ranked-pairs-voting/-/blob/main/example.xlsx?ref_type=heads)
 
-#### Upload user list and voting responses
+### Upload user list and voting responses
 
 ![Upload user list and voting responses](./docs/images/upload.png)
 
-#### Calculation configurations
+### Calculation configurations
 
 ![Calculation configurations](./docs/images/calculate.png)
 
-#### Results
+### Results
 
 ![Results](./docs/images/results.png)
 
-### TODO
+## TODO
 
 - [ ] Use D3.js or similar for visualising the results
