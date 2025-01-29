@@ -12,6 +12,7 @@ services:
       - ACCESS_TOKEN_SECRET=${ACCESS_TOKEN_SECRET}
     volumes:
       - ./data:/code/data
+    restart: always
 
   frontend:
     build:
@@ -24,3 +25,4 @@ services:
       - NODE_ENV=production
     depends_on:
       - backend
+    restart: always
