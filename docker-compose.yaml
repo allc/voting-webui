@@ -19,6 +19,7 @@ services:
       context: ./voting-webapp-frontend
       args:
         - NEXT_PUBLIC_API_SERVER=${API_SERVER}
+        - NGINX_HSTS=${NGINX_HSTS:-"on"}
     ports:
       - ${IP_PORT}:80
     environment:

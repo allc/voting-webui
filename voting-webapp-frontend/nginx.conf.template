@@ -24,6 +24,11 @@ http {
 
     keepalive_timeout  65;
 
+    map $NGINX_HSTS $hsts_header {
+        on "max-age=31536000";
+        default "";
+    }
+
     server {
         listen 80;
         location / {
@@ -35,5 +40,7 @@ http {
         }
 
         absolute_redirect off;
+
+        add_header Strict-Transport-Security $hsts_header always;
     }
 }

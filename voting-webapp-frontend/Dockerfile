@@ -19,7 +19,11 @@ RUN npm run build
 
 FROM nginx:1.27.3-alpine
 
-COPY nginx.conf /etc/nginx/nginx.conf
+ARG NGINX_HSTS
+ENV NGINX_HSTS=$NGINX_HSTS
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+
+COPY nginx.conf.template /etc/nginx/templates/nginx.conf.template
 COPY --from=build /app/out /usr/share/nginx/html
 
 EXPOSE 80
