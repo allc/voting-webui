@@ -1,4 +1,4 @@
-# Voting Web App
+# Vote Counting Webapp
 
 The app takes ranking ballots collected with Microsoft Forms within an organisation, and calculates the results using ranked pairs method (used by nerds, instead of the Microsoft Forms built-in point-based method) and visualises the results. It optionally checks against a list of eligible voters in an organisation.
 
@@ -6,7 +6,7 @@ To learn more about the ranked pairs method, see [ranked pairs on Wikipedia](htt
 
 ## Setup Voting Form
 
-See [voting setup instructions](https://voting-demo.cjxol.com/setup-instructions/).
+See [voting setup instructions](https://voting.comp-soc.com/setup-instructions/).
 
 ## Deploy
 
